@@ -1,0 +1,159 @@
+-- ServerScriptService/PlotManager (ModuleScript)
+
+local Players = game:GetService("Players")
+
+local PlotManager = {}
+
+-- Store the authoritative state of plots
+-- Key: PlotModelInstance, Value: CurrentOwnerUserId (number) or nil (available)
+local _plotStates = {}
+
+-- Public function to initialize all plots at server start
+function PlotManager.InitializePlots(availablePlotsFolder, claimedPlotsFolder)
+	local allPlotsToReset = {}
+	for _, plotModel in pairs(availablePlotsFolder:GetChildren()) do
+		table.insert(allPlotsToReset, plotModel)
+	end
+	for _, plotModel in pairs(claimedPlotsFolder:GetChildren()) do
+		table.insert(allPlotsToReset, plotModel)
+	end
+
+	for _, plotModel in pairs(allPlotsToReset) do
+		if plotModel:IsA("Model") and plotModel.Name:match("^Plot%d+$") then
+			local hasOwnerValue = plotModel:FindFirstChild("HasOwner")
+			local ownerStringValue = plotModel:FindFirstChild("Owner")
+
+			if hasOwnerValue and hasOwnerValue:IsA("BoolValue") then
+				hasOwnerValue.Value = false
+			else
+				warn("PlotManager: Plot " .. plotModel.Name .. " is missing 'HasOwner' BoolValue. Adding it.")
+				hasOwnerValue = Instance.new("BoolValue", plotModel)
+				hasOwnerValue.Name = "HasOwner"
+				hasOwnerValue.Value = false
+			end
+
+			if ownerStringValue and ownerStringValue:IsA("StringValue") then
+				ownerStringValue.Value = "None"
+			else
+				warn("PlotManager: Plot " .. plotModel.Name .. " is missing 'Owner' StringValue. Adding it.")
+				ownerStringValue = Instance.new("StringValue", plotModel)
+				ownerStringValue.Name = "Owner"
+				ownerStringValue.Value = "None"
+			end
+
+			plotModel.Parent = availablePlotsFolder
+			_plotStates[plotModel] = nil -- Mark as available in the internal state
+			print("PlotManager: Initialized plot " .. plotModel.Name .. " to available.")
+		else
+			warn("PlotManager: Non-plot model found during initialization: " .. plotModel.Name)
+		end
+	end
+end
+
+-- Public function to atomically claim a plot
+-- Returns the claimed plotModel if successful, nil otherwise.
+function PlotManager.ClaimPlot(playerUserId, savedPlotName)
+	local claimedPlotsFolder = workspace:FindFirstChild("ClaimedPlots") -- Need to get this inside the function scope
+	local availablePlotsFolder = workspace:FindFirstChild("AvailablePlots")
+
+	-- --- Attempt 1: Re-claim saved plot if genuinely available ---
+	if savedPlotName then
+		local savedPlot = availablePlotsFolder:FindFirstChild(savedPlotName) -- Check available first
+		if not savedPlot then
+			savedPlot = claimedPlotsFolder:FindFirstChild(savedPlotName) -- Then check claimed
+		end
+
+		if savedPlot then
+			local hasOwnerValue = savedPlot:FindFirstChild("HasOwner")
+			local ownerStringValue = savedPlot:FindFirstChild("Owner")
+
+			-- Atomically try to claim this specific plot
+			if hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == false then
+				hasOwnerValue.Value = true -- Attempt to claim
+				if hasOwnerValue.Value == true then -- Confirm the claim succeeded (atomic)
+					ownerStringValue.Value = tostring(playerUserId)
+					savedPlot.Parent = claimedPlotsFolder -- Move to claimed
+					_plotStates[savedPlot] = playerUserId -- Mark as claimed in internal state
+					print("PlotManager: " .. playerUserId .. " successfully RE-CLAIMED saved plot: " .. savedPlot.Name)
+					return savedPlot
+				else
+					-- Race condition: Another player claimed it between GetValue and SetValue.
+					print("PlotManager: Race condition on re-claim of " .. savedPlot.Name .. ". Skipping.")
+				end
+			end
+		end
+	end
+
+	-- --- Attempt 2: Claim a new available plot ---
+	local availableCandidates = availablePlotsFolder:GetChildren()
+	table.sort(availableCandidates, function() return math.random() < 0.5 end) -- Shuffle for fair distribution
+
+	for _, plotCandidate in pairs(availableCandidates) do
+		local hasOwnerValue = plotCandidate:FindFirstChild("HasOwner")
+		local ownerStringValue = plotCandidate:FindFirstChild("Owner")
+
+		if hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == false then
+			hasOwnerValue.Value = true -- Attempt to claim
+			if hasOwnerValue.Value == true then -- Confirm the claim succeeded
+				ownerStringValue.Value = tostring(playerUserId)
+				plotCandidate.Parent = claimedPlotsFolder
+				_plotStates[plotCandidate] = playerUserId
+				print("PlotManager: " .. playerUserId .. " successfully claimed NEW plot: " .. plotCandidate.Name)
+				return plotCandidate
+			end
+		end
+	end
+
+	print("PlotManager: " .. playerUserId .. " failed to claim any plot. No genuinely available plots found.")
+	return nil -- No plot could be claimed
+end
+
+-- Public function to atomically release a plot
+function PlotManager.ReleasePlot(playerUserId, plotName)
+	local plotModel = claimedPlotsFolder:FindFirstChild(plotName)
+	if not plotModel then
+		plotModel = availablePlotsFolder:FindFirstChild(plotName) -- Check here if it was already moved
+	end
+
+	if plotModel then
+		local hasOwnerValue = plotModel:FindFirstChild("HasOwner")
+		local ownerStringValue = plotModel:FindFirstChild("Owner")
+
+		-- Atomically try to release it ONLY IF it's owned by this specific player
+		if hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == true then
+			local currentOwnerId = tonumber(ownerStringValue.Value)
+			if currentOwnerId == playerUserId then
+				hasOwnerValue.Value = false -- Mark as free
+				if hasOwnerValue.Value == false then -- Confirm release stuck
+					ownerStringValue.Value = "None"
+					plotModel.Parent = availablePlotsFolder -- Move back to available
+					_plotStates[plotModel] = nil -- Mark as available in internal state
+					print("PlotManager: " .. playerUserId .. " successfully released plot: " .. plotName)
+					return true
+				else
+					-- Race condition: Another player just claimed it between GetValue and SetValue.
+					print("PlotManager: Race condition on release of " .. plotName .. ". It was re-claimed by someone else.")
+					return false
+				end
+			else
+				print("PlotManager: Plot " .. plotName .. " not owned by " .. playerUserId .. ". Current owner: " .. (ownerStringValue.Value or "None") .. ". Skipping release.")
+				return false -- Not owned by this player
+			end
+		else
+			print("PlotManager: Plot " .. plotName .. " is already marked as free or malformed. Skipping release.")
+			_plotStates[plotModel] = nil -- Ensure internal state is also clear
+			plotModel.Parent = availablePlotsFolder -- Ensure it's in correct folder
+			return true -- Considered released
+		end
+	else
+		warn("PlotManager: Plot " .. plotName .. " not found in map for release (owner: " .. playerUserId .. ").")
+		return false -- Plot not found
+	end
+end
+
+-- Public function to get current plot owner (based on internal state)
+function PlotManager.GetPlotOwner(plotModel)
+	return _plotStates[plotModel]
+end
+
+return PlotManager
