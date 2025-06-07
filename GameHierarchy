@@ -19,7 +19,7 @@ Workspace
             |__ Billboard
                 |__ Part
                     |__ TouchPart
-                        |__ AutoCollectTouchHandler=ONandOFF
+                        |__ AutoDepositTouchHandler+ONandOFF
                         |__ Bottom
                         |__ Top
         |__ AutoDeposit
