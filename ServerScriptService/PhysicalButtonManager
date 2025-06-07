@@ -1,0 +1,292 @@
+-- ServerScriptService/PhysicalButtonManager (Script)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SharedHelpers = require(ReplicatedStorage.SharedHelpers)
+local UpgradeConfig = require(ReplicatedStorage.Config.UpgradeConfig)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local NumberFormatter = require(ReplicatedStorage.Modules.NumberFormatter)
+local MonkeyTiers = require(ReplicatedStorage.Config.MonkeyTiers)
+
+
+
+-- --- CRITICAL FIX: Ensure PlayerHandler is loaded and ready before use ---
+-- Define PlayerHandler as a global variable once it's loaded
+local PlayerHandler_module -- Temporary local variable to hold the module during loading
+repeat
+	task.wait(0.1) -- Wait a very short moment
+	PlayerHandler_module = require(script.Parent.PlayerHandler)
+until PlayerHandler_module ~= nil
+-- Now assign it to a global variable (or just use PlayerHandler_module directly)
+-- For clarity, let's keep PlayerHandler as the name for the module.
+PlayerHandler = PlayerHandler_module
+print("PhysicalButtonManager: PlayerHandler module loaded successfully.")
+
+
+-- RemoteEvents to communicate with PlayerHandler (defined after PlayerHandler is loaded)
+local RequestPurchaseEvent = ReplicatedStorage.Events.RequestPurchase
+local RequestUpgradeEvent = ReplicatedStorage.Events.RequestUpgrade
+local UpdatePlayerUIEvent = ReplicatedStorage.Events.UpdatePlayerUI
+
+-- Store button data for easy access and updates
+local buttonConfig = {}
+
+
+-- --- Local Functions for Button Management (defined AFTER PlayerHandler is ready) ---
+local function onButtonTouched(buttonPart, hit)
+	local character = SharedHelpers.GetCharacterFromPart(hit)
+	if not character then return end
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then return end
+
+	local plotModel = SharedHelpers.GetPlotModelFromPart(buttonPart)
+	if not plotModel then warn("Button touched but plot not found: " .. buttonPart.Name); return end
+
+	local plotOwnerId = SharedHelpers.GetPlotOwnerId(plotModel)
+	if not plotOwnerId or plotOwnerId ~= player.UserId then
+		print(player.Name .. " touched " .. buttonPart.Name .. " but is not the owner of plot " .. plotModel.Name)
+		return -- Only the owner can use the button
+	end
+
+	local uiData = buttonConfig[buttonPart]
+	if not uiData then return end
+
+	-- Trigger the appropriate server-side logic directly
+	if uiData.Type == "Purchase" then
+		PlayerHandler.HandlePurchaseRequest(player, uiData.Name)
+		print(player.Name .. " requested purchase of " .. uiData.Name .. " monkey.")
+	elseif uiData.Type == "Upgrade" then
+		PlayerHandler.HandleUpgradeRequest(player, uiData.Name)
+		print(player.Name .. " requested upgrade of " .. uiData.Name .. ".")
+	end
+end
+
+-- Function to update a single button's visual state (text and color)
+local function updateButtonVisual(buttonPart, player)
+	-- PlayerHandler is guaranteed to be non-nil here
+	local playerData = PlayerHandler.GetPlayerData(player) 
+	if not playerData then warn("updateButtonVisual: PlayerData is nil for owner " .. player.Name); return end 
+
+	local plotModel = SharedHelpers.GetPlotModelFromPart(buttonPart)
+	if not plotModel then warn("Button not in a valid plot model: " .. buttonPart.Name); return end
+
+	local plotOwnerId = SharedHelpers.GetPlotOwnerId(plotModel)
+
+	local uiData = buttonConfig[buttonPart]
+	if not uiData or not uiData.CostTextLabel then return end
+
+	-- Check if button is owned by the current player (or any player)
+	if not plotOwnerId or plotOwnerId ~= player.UserId then
+		-- If not owned by this player, or not owned at all, make it grey and inactive
+		buttonPart.Color = Color3.fromRGB(150, 150, 150) -- Grey
+		uiData.CostTextLabel.Text = uiData.CostTextLabel.Text -- Keep current text or set to "Not Owned"
+		return
+	end
+
+	local currentMoney = playerData.Money
+
+	local cost = 0
+	local displayText = ""
+	local canAfford = false
+
+	if uiData.Type == "Purchase" then
+		local monkeyTierName = uiData.Name
+		if buttonPart.Name == "BuyTier1MonkeyButton" then
+
+		end
+
+		local tierConfig = MonkeyTiers:GetTier(monkeyTierName)
+		if tierConfig then
+			print("Updating UI Cost for", player.Name, monkeyTierName)
+			cost = PlayerHandler.GetScaledMonkeyCost(player, monkeyTierName) -- ✅ dynamically get scaled cost
+			local costFormatted = NumberFormatter.Abbreviate(cost)
+			displayText = "Cost: $" .. costFormatted
+			canAfford = currentMoney >= cost
+		else
+			displayText = "Error: Monkey Config"
+		end
+	elseif uiData.Type == "Upgrade" then
+		local upgradeName = uiData.Name
+		local upgradeData = UpgradeConfig.Upgrades[upgradeName]
+		if upgradeData then
+			local currentLevel = playerData.Upgrades[upgradeName .. "Level"] or 0
+			local nextLevel = currentLevel + 1
+
+			if upgradeData.MaxLevel and nextLevel > upgradeData.MaxLevel then
+				displayText = upgradeData.DisplayName .. " (MAX Lvl " .. currentLevel .. ")"
+				canAfford = true -- Already maxed, no more cost
+			else
+				cost = PlayerHandler.GetScaledUpgradeCost(player, upgradeName)
+				local nextEffect = UpgradeConfig:GetUpgradeEffect("LauncherSpeed", level)
+
+				if upgradeName == "LauncherSpeed" then
+					local currentEffect = UpgradeConfig:GetUpgradeEffect(upgradeName, currentLevel)
+					local nextEffect = UpgradeConfig:GetUpgradeEffect(upgradeName, nextLevel)
+					local costFormatted = NumberFormatter.Abbreviate(cost)
+
+					displayText = string.format(
+						"Current Speed = X%d \nNext Speed    = X%d \nCost          = $%s",
+						currentEffect,
+						nextEffect,
+						costFormatted
+					)
+				else
+					displayText = upgradeData.DisplayName .. " (Lvl " .. currentLevel .. ") - $" .. NumberFormatter.Abbreviate(cost)
+				end
+				canAfford = currentMoney >= cost
+			end
+		else
+			displayText = "Error: Upgrade Config"
+		end
+	end
+
+	-- Update text
+	uiData.CostTextLabel.Text = displayText
+
+	-- Update color
+	if canAfford then
+		buttonPart.Color = Color3.fromRGB(0, 255, 0) -- Green (can afford)
+	else
+		buttonPart.Color = Color3.fromRGB(255, 0, 0) -- Red (cannot afford)
+	end
+end
+
+
+-- --- Main Initialization for Physical Buttons (defined AFTER updateButtonVisual) ---
+-- This function sets up the buttons for a *single* plot when it becomes claimed.
+local function setupPlotButtons(plotModel)
+	print("PhysicalButtonManager: Setting up buttons for plot: " .. plotModel.Name)
+
+	local buyButton = plotModel:FindFirstChild("BuyTier1MonkeyButton")
+	local upgradeLauncherButton = plotModel:FindFirstChild("UpgradeLauncherSpeedButton")
+
+	if buyButton and buyButton:IsA("BasePart") then
+		local surfaceGui = buyButton:WaitForChild("SurfaceGui")
+		local costText = surfaceGui and surfaceGui:FindFirstChild("CostText")
+		if costText and costText:IsA("TextLabel") then
+			buttonConfig[buyButton] = {Type = "Purchase", Name = "Yellow", CostTextLabel = costText}
+			local touchDebounce = {} -- [player] = true while debounce is active
+
+			buyButton.Touched:Connect(function(hit)
+				local character = SharedHelpers.GetCharacterFromPart(hit)
+				if not character then return end
+				local player = Players:GetPlayerFromCharacter(character)
+				if not player or touchDebounce[player] then return end
+
+				touchDebounce[player] = true
+
+				-- Perform purchase
+				PlayerHandler.HandlePurchaseRequest(player, "Yellow")
+
+				-- Update only THIS button's UI
+				updateButtonVisual(buyButton, player)
+
+				task.delay(0.5, function()
+					touchDebounce[player] = nil
+				end)
+			end)
+			print("PhysicalButtonManager: Set up BuyTier1MonkeyButton for " .. plotModel.Name)
+		else
+			warn("PhysicalButtonManager: BuyTier1MonkeyButton in " .. plotModel.Name .. " missing SurfaceGui or CostTextLabel.")
+		end
+	end
+
+	if upgradeLauncherButton and upgradeLauncherButton:IsA("BasePart") then
+		local surfaceGui = upgradeLauncherButton:WaitForChild("SurfaceGui")
+		local costText = surfaceGui and surfaceGui:FindFirstChild("CostText")
+		if costText and costText:IsA("TextLabel") then
+			buttonConfig[upgradeLauncherButton] = {Type = "Upgrade", Name = "LauncherSpeed", CostTextLabel = costText}
+			upgradeLauncherButton.Touched:Connect(function(hit) onButtonTouched(upgradeLauncherButton, hit) end)
+			print("PhysicalButtonManager: Set up UpgradeLauncherSpeedButton for " .. plotModel.Name)
+		else
+			warn("PhysicalButtonManager: UpgradeLauncherSpeedButton in " .. plotModel.Name .. " missing SurfaceGui or CostTextLabel.")
+		end
+	end
+
+	-- --- Connect listener for player's money/level changes for this plot's owner ---
+	local plotOwnerId = SharedHelpers.GetPlotOwnerId(plotModel)
+	if plotOwnerId then
+		local player = Players:GetPlayerByUserId(plotOwnerId)
+		if player then
+			local playerDataReplicated = player:WaitForChild("PlayerDataReplicated", 10)
+			if not playerDataReplicated then warn("PhysicalButtonManager: PlayerDataReplicated not found for owner " .. player.Name .. " on plot " .. plotModel.Name); return end
+
+			local moneyValue = player.leaderstats:WaitForChild("Money", 10)
+			if not moneyValue then warn("PhysicalButtonManager: Money value not found for " .. player.Name); return end
+
+			local upgradesFolder = playerDataReplicated:WaitForChild("Upgrades", 10)
+			if not upgradesFolder then warn("PhysicalButtonManager: Upgrades folder not found for " .. player.Name); return end
+			local launcherSpeedLevel = upgradesFolder:WaitForChild("LauncherSpeedLevel", 10)
+			if not launcherSpeedLevel then warn("PhysicalButtonManager: LauncherSpeedLevel not found for " .. player.Name); return end
+
+			-- Initial update for all buttons on this plot
+			if buyButton then updateButtonVisual(buyButton, player) end
+			if upgradeLauncherButton then updateButtonVisual(upgradeLauncherButton, player) end
+
+			-- Listen for changes in money and upgrade levels to update button visuals
+			moneyValue.Changed:Connect(function() 
+				if buyButton then updateButtonVisual(buyButton, player) end
+				if upgradeLauncherButton then updateButtonVisual(upgradeLauncherButton, player) end
+			end)
+			launcherSpeedLevel.Changed:Connect(function() 
+				if buyButton then updateButtonVisual(buyButton, player) end
+				if upgradeLauncherButton then updateButtonVisual(upgradeLauncherButton, player) end
+			end)
+
+		else
+			warn("PhysicalButtonManager: Owner " .. plotOwnerId .. " not found (Player object) for plot " .. plotModel.Name .. ". Cannot set up dynamic button updates.")
+		end
+	end
+end
+
+
+-- --- Global Initialization (defined AFTER setupPlotButtons) ---
+-- Connect to plots moving into ClaimedPlots (newly claimed or re-claimed)
+local claimedPlotsFolder = workspace:WaitForChild("ClaimedPlots")
+claimedPlotsFolder.ChildAdded:Connect(function(plotModel)
+	if plotModel:IsA("Model") and plotModel.Name:match("^Plot%d+$") then
+		task.spawn(function()
+			task.wait(0.5) -- Give PlayerHandler a moment to assign Owner StringValue
+			setupPlotButtons(plotModel)
+		end)
+	end
+end)
+
+-- Also set up buttons for any plots already in ClaimedPlots at server start (if script restarts)
+for _, plotModel in pairs(claimedPlotsFolder:GetChildren()) do
+	if plotModel:IsA("Model") and plotModel.Name:match("^Plot%d+$") then
+		task.spawn(function()
+			task.wait(0.5)
+			setupPlotButtons(plotModel)
+		end)
+	end
+end
+
+
+-- --- Touched Event Handler for Buttons (defined AFTER setupPlotButtons) ---
+
+-- --- Handle PlayerLeaving to make buttons grey (defined AFTER other functions) ---
+Players.PlayerRemoving:Connect(function(leavingPlayer)
+	-- Get the plot model associated with the leaving player from their PlayerDataReplicated
+	local playerDataReplicated = leavingPlayer:FindFirstChild("PlayerDataReplicated")
+	if not playerDataReplicated then return end
+
+	local currentPlotNameValue = playerDataReplicated:FindFirstChild("CurrentPlotName")
+	if not currentPlotNameValue or currentPlotNameValue.Value == "None" then return end
+
+	local plotModelName = currentPlotNameValue.Value
+	local plotModel = workspace:FindFirstChild("ClaimedPlots"):FindFirstChild(plotModelName)
+	if not plotModel then return end
+
+	-- Now, update all buttons on this specific plot to grey, as its owner is leaving
+	for _, buttonPart in pairs(plotModel:GetDescendants()) do
+		if buttonPart:IsA("BasePart") and (buttonPart.Name == "BuyTier1MonkeyButton" or buttonPart.Name == "UpgradeLauncherSpeedButton") then
+			-- Set color directly to grey
+			buttonPart.Color = Color3.fromRGB(150, 150, 150)
+			local uiData = buttonConfig[buttonPart]
+			if uiData and uiData.CostTextLabel then
+				uiData.CostTextLabel.Text = uiData.CostTextLabel.Text -- Keep text, but color indicates inactivity
+			end
+		end
+	end
+end)
