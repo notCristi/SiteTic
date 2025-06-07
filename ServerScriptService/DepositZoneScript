@@ -1,0 +1,119 @@
+-- ServerScriptService/DepositZoneScript
+
+local Players = game:GetService("Players")
+local PlayerHandler = require(script.Parent.PlayerHandler)
+local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
+local GamepassConfig = require(game.ReplicatedStorage.Config.GamepassConfig)
+
+local launcherBananaQueue = {} -- [UserId] = banana count in launcher
+local lastDepositTime = {} -- for auto-deposit rate limiting
+
+local AUTO_DEPOSIT_GAMEPASS_ID = GamepassConfig.AUTO_DEPOSIT or 1240116732
+local AUTO_DEPOSIT_INTERVAL = 2 -- seconds
+local SELL_INTERVAL = 1 -- every second sell from queue
+
+
+-- Automatic deposit logic (for AutoDeposit gamepass holders)
+local function tryAutoDeposit(player)
+	local playerData = PlayerHandler.GetPlayerData(player)
+	if not playerData then return end
+	if player:GetAttribute("AutoDepositActive") ~= true then return end
+
+	local bananas = playerData.Bananas or 0
+	if bananas > 0 then
+		launcherBananaQueue[player.UserId] = (launcherBananaQueue[player.UserId] or 0) + bananas
+		PlayerHandler.ChangeBananas(player, -bananas)
+		print("[AutoDeposit] " .. player.Name .. " auto-deposited " .. bananas .. " bananas.")
+	end
+end
+-- Handles manual deposit
+local function onDepositZoneTouched(depositZonePart, hit)
+	local character = SharedHelpers.GetCharacterFromPart(hit)
+	if not character then return end
+
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then return end
+
+	local plotModel = SharedHelpers.GetPlotModelFromPart(depositZonePart)
+	local plotOwnerId = plotModel and SharedHelpers.GetPlotOwnerId(plotModel)
+
+	if not plotOwnerId or plotOwnerId ~= player.UserId then return end
+
+	local playerData = PlayerHandler.GetPlayerData(player)
+	if not playerData or playerData.Bananas <= 0 then return end
+
+	local bananasToDeposit = playerData.Bananas
+	launcherBananaQueue[player.UserId] = (launcherBananaQueue[player.UserId] or 0) + bananasToDeposit
+	PlayerHandler.ChangeBananas(player, -bananasToDeposit)
+
+	print(`[DepositZone] {player.Name} manually deposited {bananasToDeposit} bananas.`)
+end
+
+local function processLauncherQueue(player)
+	tryAutoDeposit(player) -- ✅ Deposit before converting
+
+	local playerData = PlayerHandler.GetPlayerData(player)
+	if not playerData then return end
+
+	local playerLauncherBananas = launcherBananaQueue[player.UserId] or 0
+	if playerLauncherBananas > 0 then
+		local launcherRate = playerData.Upgrades.LauncherSpeed or 1
+		local moneyPerBanana = 1
+
+		local bananasToSell = math.min(playerLauncherBananas, launcherRate)
+		local earned = bananasToSell * moneyPerBanana
+
+		PlayerHandler.ChangeMoney(player, earned)
+		launcherBananaQueue[player.UserId] = playerLauncherBananas - bananasToSell
+
+		print("[Launcher] " .. player.Name .. " sold " .. bananasToSell .. " bananas. $" .. earned)
+	end
+end
+
+-- Setup touch events for DepositZone parts in all current + future plots
+local function setupDepositZones()
+	local claimedPlotsFolder = workspace:WaitForChild("ClaimedPlots")
+
+	local function connectPlot(plotModel)
+		local depositZone = plotModel:FindFirstChild("DepositZone")
+		if depositZone and depositZone:IsA("BasePart") then
+			print("[DepositZone] Hooking into:", depositZone:GetFullName())
+			depositZone.Touched:Connect(function(hit)
+				onDepositZoneTouched(depositZone, hit)
+			end)
+		end
+	end
+
+	for _, plot in ipairs(claimedPlotsFolder:GetChildren()) do
+		if plot:IsA("Model") then
+			connectPlot(plot)
+		end
+	end
+
+	claimedPlotsFolder.ChildAdded:Connect(function(child)
+		if child:IsA("Model") then
+			task.wait(1) -- slight delay in case "DepositZone" is not added immediately
+			connectPlot(child)
+		end
+	end)
+end
+
+-- Sell bananas every second
+task.spawn(function()
+	while true do
+		task.wait(SELL_INTERVAL)
+		for _, player in ipairs(Players:GetPlayers()) do
+			processLauncherQueue(player)
+			tryAutoDeposit(player)
+		end
+	end
+end)
+
+-- Cleanup
+Players.PlayerRemoving:Connect(function(player)
+	launcherBananaQueue[player.UserId] = nil
+	lastDepositTime[player.UserId] = nil
+end)
+
+-- Initialize
+setupDepositZones()
