@@ -1,0 +1,95 @@
+-- ServerScriptService/PlayerSpawnTeleporter (Script)
+
+local Players = game:GetService("Players")
+local PlayerHandler = require(script.Parent.PlayerHandler) -- To get player data
+local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers) -- To get plot model and owner ID
+
+-- General spawn location for players initially (e.g., if no plot assigned yet)
+-- This should be a physical SpawnLocation object in your Workspace
+local defaultMapSpawnLocation = workspace:FindFirstChild("MapSpawnLocation")
+
+-- Listen for players joining
+Players.PlayerAdded:Connect(function(player)
+    local plotSetForPlayer = false -- Flag to track if plot was successfully set and handled
+    
+    -- --- 1. Set default spawn location initially ---
+    if defaultMapSpawnLocation and defaultMapSpawnLocation:IsA("SpawnLocation") then
+        player.RespawnLocation = defaultMapSpawnLocation
+        print("PlayerSpawnTeleporter: Set default respawn for " .. player.Name .. " to MapSpawnLocation.")
+    else
+        warn("PlayerSpawnTeleporter: 'MapSpawnLocation' not found or not a SpawnLocation. Player may spawn randomly.")
+    end
+
+    -- --- 2. Wait for PlayerHandler to assign a plot and set RespawnLocation ---
+    -- We need to wait for PlayerDataReplicated and CurrentPlotName value
+    local playerDataReplicated = player:WaitForChild("PlayerDataReplicated", 20)
+    if not playerDataReplicated then
+        warn("PlayerSpawnTeleporter: PlayerDataReplicated not found for " .. player.Name .. ". Cannot set plot spawn.")
+        return -- Cannot proceed without replicated data
+    end
+
+    local currentPlotNameValue = playerDataReplicated:WaitForChild("CurrentPlotName", 20)
+    if not currentPlotNameValue then
+        warn("PlayerSpawnTeleporter: CurrentPlotName value not found for " .. player.Name .. ". Cannot set plot spawn.")
+        return -- Cannot proceed without plot name value
+    end
+
+    -- --- Define a local function to handle the actual teleportation and respawn ---
+    local function teleporterLoop(player)
+        local plotModel = nil
+        local playerSpawnLocation = nil
+        local attempts = 0
+        local maxAttempts = 10 -- Give it some attempts to find the plot/spawn
+
+        repeat
+            attempts = attempts + 1
+            task.wait(0.5) -- Wait briefly for PlayerHandler to update CurrentPlotNameValue
+
+            local plotName = currentPlotNameValue.Value
+            if plotName ~= "None" and plotName ~= "" then
+                plotModel = workspace:FindFirstChild("ClaimedPlots"):FindFirstChild(plotName)
+                if plotModel then
+                    playerSpawnLocation = plotModel:FindFirstChild("PlayerSpawnLocation")
+                    if playerSpawnLocation and playerSpawnLocation:IsA("SpawnLocation") then
+                        -- Found the plot model and its spawn location!
+                        -- PlayerHandler already set player.RespawnLocation. We just need to trigger the spawn.
+                        break
+                    else
+                        warn("PlayerSpawnTeleporter: Plot '" .. plotName .. "' found, but missing or invalid PlayerSpawnLocation. Attempt " .. attempts)
+                    end
+                else
+                    warn("PlayerSpawnTeleporter: Plot model '" .. plotName .. "' not yet found in ClaimedPlots. Attempt " .. attempts)
+                end
+            end
+        until plotModel ~= nil and playerSpawnLocation ~= nil or player:IsA("Player") == false or attempts >= maxAttempts
+
+        if plotModel and playerSpawnLocation then
+            -- --- Perform the teleport and set future respawn location ---
+            player.RespawnLocation = playerSpawnLocation -- Re-set just to be safe for future deaths
+            print("PlayerSpawnTeleporter: Finalizing spawn for " .. player.Name .. " to " .. plotModel.Name)
+
+            -- Force character load/respawn to make them appear at their assigned plot
+            if player.Character then
+                -- If character already exists, force a respawn
+                player:LoadCharacter()
+                print("PlayerSpawnTeleporter: Forced respawn for " .. player.Name .. " to assigned plot.")
+            else
+                -- If character not yet loaded, wait for it to load, then force respawn.
+                -- CharacterAdded will fire shortly, and then RespawnLocation will apply.
+                player.CharacterAdded:Wait() -- Wait for initial character to load
+                player:LoadCharacter() -- Force respawn at the new RespawnLocation
+                print("PlayerSpawnTeleporter: Player " .. player.Name .. "'s initial character loaded, then forced respawn to assigned plot.")
+            end
+            plotSetForPlayer = true
+        else
+            warn("PlayerSpawnTeleporter: Failed to set plot spawn location for " .. player.Name .. " after " .. maxAttempts .. " attempts.")
+            -- Player will remain at MapSpawnLocation if they weren't kicked by PlayerHandler
+        end
+    end
+
+    -- Call the teleporter loop for the player. This handles initial spawn.
+    -- Use task.spawn to not yield PlayerAdded, allowing other PlayerAdded connections to run.
+    task.spawn(function()
+        teleporterLoop(player)
+    end)
+end)
