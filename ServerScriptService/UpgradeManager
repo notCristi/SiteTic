@@ -1,0 +1,66 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PlayerHandler = require(script.Parent.PlayerHandler) -- Corrected path
+local UpgradeConfig = require(ReplicatedStorage.Config.UpgradeConfig)
+
+local RequestUpgradeEvent = ReplicatedStorage.Events.RequestUpgrade
+
+-- Function to handle an upgrade request
+local function onRequestUpgrade(player, upgradeName)
+	local playerData = PlayerHandler.GetPlayerData(player)
+	if not playerData then return end
+
+	local upgradeData = UpgradeConfig:GetUpgrade(upgradeName)
+	if not upgradeData then
+		warn("UpgradeManager: Invalid upgrade requested: " .. upgradeName)
+		return
+	end
+
+	local currentLevel = playerData.Upgrades[upgradeName] or 0
+	local nextLevel = currentLevel + 1
+
+	if nextLevel > upgradeData.MaxLevel then
+		print(player.Name .. " tried to upgrade " .. upgradeName .. " but it's already max level.")
+		return
+	end
+
+	local cost = UpgradeConfig:GetUpgradeCost(upgradeName, nextLevel)
+	if not cost then
+		warn("UpgradeManager: Cost not defined for " .. upgradeName .. " level " .. nextLevel)
+		return
+	end
+
+	if playerData.Money >= cost then
+		-- Deduct money
+		PlayerHandler.ChangeMoney(player, -cost)
+
+		-- Update player's upgrade level
+		playerData.Upgrades[upgradeName] = nextLevel
+
+		-- Apply specific effects based on upgrade type
+		if upgradeName == "LauncherSpeed" then
+			-- Update the replicated IntValue for LauncherSpeedLevel
+			local launcherSpeedLevel = player.PlayerDataReplicated.Upgrades.LauncherSpeedLevel
+			if launcherSpeedLevel then
+				launcherSpeedLevel.Value = nextLevel -- nextLevel is the new level
+			end
+		elseif upgradeName == "BananaCapacity" then
+			-- Update the replicated IntValue for BananaCapacityLevel
+			local bananaCapacityLevel = player.PlayerDataReplicated.Upgrades.BananaCapacityLevel
+			if bananaCapacityLevel then
+				bananaCapacityLevel.Value = nextLevel
+			end
+			-- The actual capacity display for UI is handled by the client observing this level change.
+		end
+
+		PlayerHandler.SetPlayerData(player, playerData) -- Save updated data
+
+		-- Potentially send a success message/visual effect to client
+	else
+		print(player.Name .. " cannot afford " .. upgradeName .. " upgrade. Needs $" .. cost)
+		-- Optionally, give a message back to the client
+	end
+end
+
+RequestUpgradeEvent.OnServerEvent:Connect(onRequestUpgrade)
