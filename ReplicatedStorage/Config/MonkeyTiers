@@ -1,0 +1,230 @@
+-- ReplicatedStorage/Config/MonkeyTiers (ModuleScript)
+
+local MonkeyTiers = {}
+
+-- Define each tier's properties
+-- PRODUCTION_RATE: Bananas produced per second
+-- MONKEY_MODEL_PATH: Path to the 3D model of the monkey
+-- BANANA_MODEL_PATH: Path to the 3D model of the banana this monkey produces
+-- COST: Cost to buy this tier as a base monkey (only for Tier 1)
+-- MERGE_COST: Cost to merge into this tier (for higher tiers)
+-- REWARD_PER_BANANA: Money received per banana of this type (can vary by banana type later)
+-- NEXT_TIER_NAME: The name of the next tier in the merge sequence
+-- BANANA_COLOR: The color of the banana produced by this monkey (for visual distinction)
+
+MonkeyTiers.Tiers = {
+	-- Tier 1: Yellow Monkey
+	["Yellow"] = {
+		PRODUCTION_RATE = 1, -- 1 banana per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier1Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = 10, -- Initial cost to buy a Tier 1 monkey
+		PRICE_MULTIPLIER = 1.5, -- <== NEW
+		MERGE_COST = nil, -- Cannot be merged into (it's the base tier)
+		REWARD_PER_BANANA = 1, -- $1 per yellow banana
+		NEXT_TIER_NAME = "Green",
+		BANANA_COLOR = Color3.fromRGB(255, 255, 0), -- Yellow
+	},
+
+	-- Tier 2: Green Monkey (merged from 2 Yellow monkeys)
+	["Green"] = {
+		PRODUCTION_RATE = 1, -- 2 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier2Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 50, -- Cost to merge 2 Yellows into a Green
+		REWARD_PER_BANANA = 3, -- $3 per green banana
+		NEXT_TIER_NAME = "Blue",
+		BANANA_COLOR = Color3.fromRGB(0, 255, 0), -- Green
+	},
+
+	-- Tier 3: Blue Monkey (merged from 2 Green monkeys)
+	["Blue"] = {
+		PRODUCTION_RATE = 1, -- 5 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier3Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 200, -- Cost to merge 2 Greens into a Blue
+		REWARD_PER_BANANA = 10, -- $10 per blue banana
+		NEXT_TIER_NAME = "Red",
+		BANANA_COLOR = Color3.fromRGB(0, 0, 255), -- Blue
+	},
+
+	-- Tier 4: Red Monkey (merged from 2 Blue monkeys)
+	["Red"] = {
+		PRODUCTION_RATE = 1, -- 10 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier4Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 800, -- Cost to merge 2 Blues into a Red
+		REWARD_PER_BANANA = 40, -- $30 per red banana
+		NEXT_TIER_NAME = "Pink",
+		BANANA_COLOR = Color3.fromRGB(255, 0, 0), -- Red
+	},
+
+	-- Tier 5: Pink Monkey (merged from 2 Red monkeys)
+	["Pink"] = {
+		PRODUCTION_RATE = 1, -- 25 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier5Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 3000, -- Cost to merge 2 Reds into a Pink
+		REWARD_PER_BANANA = 140, -- $80 per pink banana
+		NEXT_TIER_NAME = "Silver",
+		BANANA_COLOR = Color3.fromRGB(255, 105, 180), -- Pink
+	},
+
+	-- Tier 6: Silver Monkey (merged from 2 Pink monkeys)
+	["Silver"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier6Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 450, -- $200 per silver banana
+		NEXT_TIER_NAME = "Gold",
+		BANANA_COLOR = Color3.fromRGB(192, 192, 192), -- Silver
+	},
+	
+	
+	["Gold"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier7Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 1500, -- $200 per silver banana
+		NEXT_TIER_NAME = "Ruby",
+		BANANA_COLOR = Color3.fromRGB(255, 170, 0), -- Silver
+	},
+	
+	["Ruby"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier8Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 5000, -- $200 per silver banana
+		NEXT_TIER_NAME = "Emerald",
+		BANANA_COLOR = Color3.fromRGB(255, 170, 0), -- Silver
+	},
+	
+
+	["Emerald"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier9Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 17500, -- $200 per silver banana
+		NEXT_TIER_NAME = "Gigel",
+		BANANA_COLOR = Color3.fromRGB(0, 170, 0), -- Silver
+	},
+	
+	["Gigel"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier10Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 60000, -- $200 per silver banana
+		NEXT_TIER_NAME = "Gogu",
+		BANANA_COLOR = Color3.fromRGB(85, 0, 255), -- Silver
+	},
+	
+	["Gogu"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier11Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 200000, -- $200 per silver banana
+		NEXT_TIER_NAME = "Guster",
+		BANANA_COLOR = Color3.fromRGB(85, 170, 255), -- Silver
+	},
+	
+	["Guster"] = {
+		PRODUCTION_RATE = 1, -- 60 bananas per second
+		MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier12Monkey, -- << REPLACE WITH YOUR ACTUAL PATH
+		BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana, -- << REPLACE WITH YOUR ACTUAL PATH
+		COST = nil,
+		MERGE_COST = 10000, -- Cost to merge 2 Pinks into a Silver
+		REWARD_PER_BANANA = 800000, -- $200 per silver banana
+		NEXT_TIER_NAME = "Final",
+		BANANA_COLOR = Color3.fromRGB(85, 0, 0), -- Silver
+	},
+	-- You can add more tiers here (Gold, Rainbow, etc.) following the same structure.
+	-- Example:
+	-- ["Gold"] = {
+	--     PRODUCTION_RATE = 150,
+	--     MONKEY_MODEL_PATH = game.ReplicatedStorage.Models.Tier7Monkey,
+	--     BANANA_MODEL_PATH = game.ReplicatedStorage.Models.Banana,
+	--     COST = nil,
+	--     MERGE_COST = 35000,
+	--     REWARD_PER_BANANA = 500,
+	--     NEXT_TIER_NAME = nil, -- No next tier if it's the highest
+	--     BANANA_COLOR = Color3.fromRGB(255, 215, 0),
+	-- },
+}
+
+-- Function to get tier data by name
+function MonkeyTiers:GetTier(tierName)
+	return self.Tiers[tierName]
+end
+
+-- Function to get the tier name of the next tier
+function MonkeyTiers:GetNextTierName(currentTierName)
+	local currentTier = self:GetTier(currentTierName)
+	if currentTier then
+		return currentTier.NEXT_TIER_NAME
+	end
+	return nil
+end
+
+-- Function to get the model path for a given tier
+function MonkeyTiers:GetMonkeyModelPath(tierName)
+	local tier = self:GetTier(tierName)
+	if tier then
+		return tier.MONKEY_MODEL_PATH
+	end
+	return nil
+end
+
+-- Function to get the production rate for a given tier
+function MonkeyTiers:GetProductionRate(tierName)
+	local tier = self:GetTier(tierName)
+	if tier then
+		return tier.PRODUCTION_RATE
+	end
+	return 0
+end
+
+-- Function to get the banana model path for a given tier
+function MonkeyTiers:GetBananaModelPath(tierName)
+	local tier = self:GetTier(tierName)
+	if tier then
+		return tier.BANANA_MODEL_PATH
+	end
+	return nil
+end
+
+-- Function to get the reward per banana for a given tier
+function MonkeyTiers:GetRewardPerBanana(tierName)
+	local tier = self:GetTier(tierName)
+	if tier then
+		return tier.REWARD_PER_BANANA
+	end
+	return 0
+end
+
+-- Function to get the banana color for a given tier
+function MonkeyTiers:GetBananaColor(tierName)
+	local tier = self:GetTier(tierName)
+	if tier then
+		return tier.BANANA_COLOR
+	end
+	return Color3.fromRGB(255, 255, 255) -- Default white
+end
+
+
+return MonkeyTiers
