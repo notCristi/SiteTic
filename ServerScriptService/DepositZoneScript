@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local PlayerHandler = require(script.Parent.PlayerHandler)
 local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
 local GamepassConfig = require(game.ReplicatedStorage.Config.GamepassConfig)
+local GamepassTracker = require(script.Parent.GamepassTracker)
 
 local launcherBananaQueue = {} -- [UserId] = banana count in launcher
 local lastDepositTime = {} -- for auto-deposit rate limiting

@@ -7,10 +7,7 @@ local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
 local GamepassTracker = require(script.Parent.GamepassTracker)
 local GamepassConfig = require(ReplicatedStorage.Config.GamepassConfig)
 
--- Check and track player on join
-Players.PlayerAdded:Connect(function(player)
-	GamepassTracker.SetupPlayer(player)
-end)
+-- GamepassTracker handles PlayerAdded internally
 
 -- Heartbeat = auto-collect bananas for tracked players
 RunService.Heartbeat:Connect(function()

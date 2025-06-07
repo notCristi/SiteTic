@@ -16,6 +16,15 @@ function GamepassConfig.GetId(name)
     return GamepassConfig.IDs[name]
 end
 
+function GamepassConfig.GetNames()
+    local t = {}
+    for name in pairs(GamepassConfig.IDs) do
+        table.insert(t, name)
+    end
+    table.sort(t)
+    return t
+end
+
 -- Backwards compatibility
 for k,v in pairs(GamepassConfig.IDs) do
     GamepassConfig[k] = v
