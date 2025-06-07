@@ -1,64 +1,28 @@
-local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local GamepassService = require(game.ReplicatedStorage.Modules.GamepassService)
 local GamepassConfig = require(game.ReplicatedStorage.Config.GamepassConfig)
 
 local GamepassTracker = {}
-local trackedPlayers = {}  -- [UserId] = true
+
+local function setup(player)
+    GamepassService.ApplyAttributes(player)
+    if player:GetAttribute("Gamepass_"..tostring(GamepassConfig.AUTO_COLLECT)) then
+        player:SetAttribute("AutoCollectActive", true)
+    else
+        player:SetAttribute("AutoCollectActive", false)
+    end
+end
 
 Players.PlayerAdded:Connect(function(player)
-	-- Delay to ensure everything is ready (replicated data, plot, etc.)
-	task.defer(function()
-		local ownsPass = false
-		local success, result = pcall(function()
-			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GamepassConfig.AUTO_COLLECT)
-		end)
-
-		if success then
-			ownsPass = result
-		end
-
-		local attrName = "Gamepass_" .. tostring(GamepassConfig.AUTO_COLLECT)
-		player:SetAttribute(attrName, ownsPass)
-
-		-- ✅ Add a second delay to make sure AutoCollectHandler reads correct state
-		task.wait(0.5)
-
-		if ownsPass then
-			player:SetAttribute("AutoCollectActive", true) -- 🔥 Make sure it's ON
-			print("[AutoCollect] Activated on join for:", player.Name)
-		else
-			player:SetAttribute("AutoCollectActive", false)
-		end
-	end)
+    task.defer(setup, player)
 end)
 
--- Check on join
 function GamepassTracker.SetupPlayer(player)
-	local success, hasPass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GamepassConfig.AUTO_COLLECT)
-	end)
-
-	if success and hasPass then
-		trackedPlayers[player.UserId] = true
-	end
+    setup(player)
 end
 
-function GamepassTracker.HasGamepass(player)
-	return trackedPlayers[player.UserId] == true
+function GamepassTracker.HasGamepass(player, passName)
+    return GamepassService.PlayerOwns(player, passName)
 end
-
--- Listen to runtime purchases
-MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamepassId, wasPurchased)
-	if gamepassId == GamepassConfig.AUTO_COLLECT and wasPurchased then
-		player:SetAttribute("Gamepass_" .. tostring(GamepassConfig.AUTO_COLLECT), true)
-		player:SetAttribute("AutoCollectActive", true) -- ✅ Start ON
-		print(player.Name .. " bought Auto Collect gamepass! Activated immediately.")
-	end
-end)
-
-
-Players.PlayerRemoving:Connect(function(player)
-	trackedPlayers[player.UserId] = nil
-end)
 
 return GamepassTracker
