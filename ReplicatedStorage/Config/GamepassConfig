@@ -1,5 +1,33 @@
-return {
-	AUTO_COLLECT = 1239423713,
-	AUTO_DEPOSIT = 1240116732
-	-- Other gamepasses here in future
+local GamepassConfig = {}
+
+GamepassConfig.IDs = {
+    AUTO_COLLECT = 1239423713,
+    AUTO_DEPOSIT = 1240116732,
+    AUTO_UPGRADE = 0,
+    ["10Banriot"] = 0,
+    ["25Banriot"] = 0,
+    ["50Banriot"] = 0,
+    ["2xBanana"] = 0,
+    ["2xMoney"] = 0,
+    ["10xLauncherSpeed"] = 0,
 }
+
+function GamepassConfig.GetId(name)
+    return GamepassConfig.IDs[name]
+end
+
+function GamepassConfig.GetNames()
+    local t = {}
+    for name in pairs(GamepassConfig.IDs) do
+        table.insert(t, name)
+    end
+    table.sort(t)
+    return t
+end
+
+-- Backwards compatibility
+for k,v in pairs(GamepassConfig.IDs) do
+    GamepassConfig[k] = v
+end
+
+return GamepassConfig
