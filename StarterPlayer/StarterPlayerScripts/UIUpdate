@@ -1,0 +1,60 @@
+-- UIUpdaterScript (StarterPlayerScripts)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local PlayerHandlerClient = require(ReplicatedStorage.SharedHelpers:WaitForChild("PlayerHandlerClient"))
+local UpgradeConfig = require(ReplicatedStorage.Config.UpgradeConfig)
+local player = Players.LocalPlayer
+local refreshButtonEvent = ReplicatedStorage.Events:WaitForChild("RefreshPurchaseButton")
+
+
+
+refreshButtonEvent.OnClientEvent:Connect(function(data)
+	if typeof(data) == "string" then
+		-- Assume monkey tier button update
+		local tierName = data
+		local plots = workspace.ClaimedPlots:GetChildren()
+		for _, plot in pairs(plots) do
+			local owner = plot:FindFirstChild("Owner")
+			if owner and owner.Value == tostring(player.UserId) then
+				local button = plot:FindFirstChild("BuyTier1MonkeyButton")
+				if button then
+					local surfaceGui = button:FindFirstChild("SurfaceGui")
+					local costText = surfaceGui and surfaceGui:FindFirstChild("CostText")
+					if costText then
+						local cost = PlayerHandlerClient.GetScaledMonkeyCost(player, tierName)
+						costText.Text = "Buy " .. tierName .. " Monkey ($" .. cost .. ")"
+					end
+				end
+			end
+		end
+
+	elseif typeof(data) == "table" and data.Type == "Upgrade" then
+		-- Handle launcher upgrade button
+		local upgradeName = data.Name
+		local currentLevel = player:GetAttribute(upgradeName .. "Level") or 0
+		local nextLevel = currentLevel + 1
+		local cost = UpgradeConfig:GetUpgradeCost(upgradeName, nextLevel)
+		local effect = UpgradeConfig:GetUpgradeEffect(upgradeName, currentLevel)
+		local nextEffect = UpgradeConfig:GetUpgradeEffect(upgradeName, nextLevel)
+		local plots = workspace.ClaimedPlots:GetChildren()
+		for _, plot in pairs(plots) do
+			local owner = plot:FindFirstChild("Owner")
+			if owner and owner.Value == tostring(player.UserId) then
+				local button = plot:FindFirstChild("UpgradeLauncherSpeedButton")
+				if button then
+					local surfaceGui = button:FindFirstChild("SurfaceGui")
+					local costText = surfaceGui and surfaceGui:FindFirstChild("CostText")
+					if costText then
+						local cost = PlayerHandlerClient.GetScaledUpgradeCost(player, upgradeName)
+						local currentLevel = player:GetAttribute(upgradeName .. "Level") or 0
+						local effect = UpgradeConfig:GetUpgradeEffect(upgradeName, currentLevel)
+						costText.Text = string.format("CURRENT SPEED = X%d\nNEXT SPEED    = X%d\nCOST          = $%d", effect, nextEffect, cost)
+
+					end
+				end
+			end
+		end
+	end
+end)
+
+
