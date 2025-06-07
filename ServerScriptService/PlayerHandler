@@ -1,0 +1,904 @@
+-- ServerScriptService/PlayerHandler (ModuleScript)
+
+local DataManager = require(script.Parent.DataManager)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+
+-- Configuration Modules
+local MonkeyTiers = require(ReplicatedStorage.Config.MonkeyTiers)
+local UpgradeConfig = require(ReplicatedStorage.Config.UpgradeConfig)
+local SharedHelpers = require(ReplicatedStorage.SharedHelpers)
+
+
+-- --- NEW GLOBAL REFERENCES FOR MULTI-PLOT ---
+local availablePlotsFolder = workspace:WaitForChild("AvailablePlots")
+local claimedPlotsFolder = workspace:WaitForChild("ClaimedPlots")
+
+
+local playerData = {} -- [PlayerUserId] = {Money, Bananas, Upgrades, MonkeySpawnSlots, PlotOwned, CurrentPlotName}
+local liveMonkeyModels = {} -- [PlayerUserId][SlotName] = MonkeyModelInstance (actual Roblox model)
+local sessionLoopControl = {} -- [UserId] = true/false flag
+
+
+-- --- CRITICAL FIX: Initialize UpdatePlayerUIEvent after Events folder is ready ---
+local UpdatePlayerUIEvent = nil
+do
+	local eventsFolder = ReplicatedStorage:WaitForChild("Events")
+	UpdatePlayerUIEvent = eventsFolder:WaitForChild("UpdatePlayerUI")
+end
+
+
+-- --- Server Initialization: Scan plots and set initial status ---
+do
+	print("PlayerHandler: Server startup - Initializing all plots and clearing old owner data...")
+	local allPlotsToReset = {}
+	for _, plotModel in pairs(availablePlotsFolder:GetChildren()) do
+		table.insert(allPlotsToReset, plotModel)
+	end
+	for _, plotModel in pairs(claimedPlotsFolder:GetChildren()) do
+		table.insert(allPlotsToReset, plotModel)
+	end
+
+	for _, plotModel in pairs(allPlotsToReset) do
+		if plotModel:IsA("Model") and plotModel.Name:match("^Plot%d+$") then
+			local hasOwnerValue = plotModel:FindFirstChild("HasOwner")
+			local ownerStringValue = plotModel:FindFirstChild("Owner")
+
+			if hasOwnerValue and hasOwnerValue:IsA("BoolValue") then
+				hasOwnerValue.Value = false
+			else
+				warn("PlayerHandler: Plot " .. plotModel.Name .. " is missing 'HasOwner' BoolValue. Adding it.")
+				hasOwnerValue = Instance.new("BoolValue", plotModel)
+				hasOwnerValue.Name = "HasOwner"
+				hasOwnerValue.Value = false
+			end
+
+			if ownerStringValue and ownerStringValue:IsA("StringValue") then
+				ownerStringValue.Value = "None"
+			else
+				warn("PlayerHandler: Plot " .. plotModel.Name .. " is missing 'Owner' StringValue. Adding it.")
+				ownerStringValue = Instance.new("StringValue", plotModel)
+				ownerStringValue.Name = "Owner"
+				ownerStringValue.Value = "None"
+			end
+
+			plotModel.Parent = availablePlotsFolder
+			print("PlayerHandler: Reset plot " .. plotModel.Name .. " and moved to AvailablePlots.")
+		else
+			warn("PlayerHandler: Non-plot model found in plot folders during reset: " .. plotModel.Name)
+		end
+	end
+end
+
+
+-- --- Helper functions for data management ---
+
+local function getPlayerData(player)
+	return playerData[player.UserId]
+end
+
+local function setPlayerData(player, newData)
+	playerData[player.UserId] = newData
+end
+
+
+-- --- Replicated Value Management (Explicitly pushed to client UI) ---
+-- Define updatePlayerUI at a global scope so it's accessible before onPlayerAdded calls it.
+local function updatePlayerUI(player)
+	local data = getPlayerData(player)
+	if not data then return end
+
+	local currentMoney = data.Money
+	local currentBananas = data.Bananas
+
+	UpdatePlayerUIEvent:FireClient(player, {
+		Money = currentMoney,
+		Bananas = currentBananas,
+	})
+end
+
+
+-- --- Core Game Logic Functions ---
+
+function changeMoney(player, amount)
+	local data = getPlayerData(player)
+	if data then
+		data.Money = math.max(0, data.Money + amount)
+		setPlayerData(player, data)
+		updatePlayerUI(player)
+	end
+end
+
+function changeBananas(player, amount)
+	local data = getPlayerData(player)
+	if data then
+		data.Bananas = math.max(0, data.Bananas + amount)
+		setPlayerData(player, data)
+		updatePlayerUI(player)
+	end
+end
+
+local function createBanana(monkeyModel, tierName, plotModel)
+	local tierConfig = MonkeyTiers:GetTier(tierName)
+	if not tierConfig then return end
+
+	local bananaClone = tierConfig.BANANA_MODEL_PATH:Clone()
+	bananaClone.Name = "Banana"
+	bananaClone.CanCollide = true
+	bananaClone.Anchored = false
+	bananaClone.Transparency = 0
+	bananaClone.Color = tierConfig.BANANA_COLOR
+
+	-- Create and attach Tier BEFORE parenting
+	local bananaValue = Instance.new("StringValue")
+	bananaValue.Name = "Tier"
+	bananaValue.Value = tierName
+	bananaValue.Parent = bananaClone
+
+	local spawnOffset = Vector3.new(math.random(-10, 10) / 10, -0.5, math.random(-10, 10) / 10)
+	bananaClone.CFrame = monkeyModel.PrimaryPart.CFrame * CFrame.new(spawnOffset)
+
+	-- NOW parent it
+	bananaClone.Parent = plotModel
+
+	Debris:AddItem(bananaClone, 60)
+end
+
+
+function spawnMonkey(player, slotName, cframe, tierName, plotModel)
+	local playerUserId = player.UserId
+	local tierConfig = MonkeyTiers:GetTier(tierName)
+	if not tierConfig or not tierConfig.MONKEY_MODEL_PATH then
+		warn("PlayerHandler.spawnMonkey: Invalid tier or monkey model path for tier: " .. tierName)
+		return nil
+	end
+
+	local playerMonkeysFolder = plotModel:FindFirstChild(playerUserId .. "_Monkeys")
+	if not playerMonkeysFolder then
+		playerMonkeysFolder = Instance.new("Folder")
+		playerMonkeysFolder.Name = playerUserId .. "_Monkeys"
+		playerMonkeysFolder.Parent = plotModel
+	end
+
+	local monkeyModel = tierConfig.MONKEY_MODEL_PATH:Clone()
+	monkeyModel.Name = tierName .. "Monkey"
+
+	if not monkeyModel.PrimaryPart then
+		warn("spawnMonkey: Monkey model '" .. tierConfig.MONKEY_MODEL_PATH.Name .. "' is missing a PrimaryPart! Destroying malformed model.")
+		monkeyModel:Destroy()
+		return nil
+	end
+
+	monkeyModel:SetPrimaryPartCFrame(cframe)
+	monkeyModel.Parent = playerMonkeysFolder
+
+	local tierValue = Instance.new("StringValue")
+	tierValue.Name = "Tier"
+	tierValue.Value = tierName
+	tierValue.Parent = monkeyModel.PrimaryPart
+
+	if not liveMonkeyModels[playerUserId] then
+		liveMonkeyModels[playerUserId] = {}
+	end
+	liveMonkeyModels[playerUserId][slotName] = monkeyModel
+
+	local function startBananaGeneration(monkey)
+		task.spawn(function()
+			while true do
+				task.wait(1 / tierConfig.PRODUCTION_RATE)
+				if monkey and monkey.PrimaryPart and monkey.PrimaryPart.Parent then
+					createBanana(monkey, tierName, plotModel)
+				else
+					break
+				end
+			end
+		end)
+	end
+	startBananaGeneration(monkeyModel)
+
+	return monkeyModel
+end
+
+function removeMonkey(player, slotName, plotModel)
+	local playerUserId = player.UserId
+	local monkeyModel = liveMonkeyModels[playerUserId] and liveMonkeyModels[playerUserId][slotName]
+	if monkeyModel then
+		monkeyModel:Destroy()
+		liveMonkeyModels[playerUserId][slotName] = nil
+
+		local plotSpawnPoints = plotModel:FindFirstChild("PlotSpawnPoints")
+		if plotSpawnPoints then
+			local spawnPoint = plotSpawnPoints:FindFirstChild(slotName)
+			if spawnPoint and spawnPoint:GetAttribute("HasMonkey") then
+				spawnPoint:SetAttribute("HasMonkey", false)
+			end
+		end
+	end
+end
+
+function autoMergeMonkeys(player, newMonkeyTier)
+	local eventsFolder = game.ReplicatedStorage:WaitForChild("Events")
+	local refreshEvent = eventsFolder:WaitForChild("RefreshPurchaseButton")
+	refreshEvent:FireClient(player, monkeyTier)
+	print("autoMergeMonkeys: Function called for " .. player.Name .. ", checking tier " .. newMonkeyTier)
+	local playerData = getPlayerData(player)
+	if not playerData then
+		warn("autoMergeMonkeys: Player data is nil for player: " .. player.Name)
+		return
+	end
+
+	local plotModel = claimedPlotsFolder:FindFirstChild(playerData.CurrentPlotName)
+	if not plotModel then warn("autoMergeMonkeys: Player plot model not found in ClaimedPlots for " .. player.Name); return end
+	local monkeySpawnPointsFolder = plotModel:FindFirstChild("PlotSpawnPoints")
+	if not monkeySpawnPointsFolder then warn("autoMergeMonkeys: PlotSpawnPoints folder not found in " .. plotModel.Name); return end
+
+
+	local currentTierMonkeys = {}
+	for slotName, tierName in pairs(playerData.MonkeySpawnSlots) do
+		if tierName == newMonkeyTier then
+			table.insert(currentTierMonkeys, {SlotName = slotName, TierName = tierName})
+		end
+	end
+	print("autoMergeMonkeys: Found " .. #currentTierMonkeys .. " monkeys of tier " .. newMonkeyTier .. " for " .. player.Name)
+
+	if #currentTierMonkeys >= 3 then
+		print("autoMergeMonkeys: Merge condition met! Player has " .. #currentTierMonkeys .. "x " .. newMonkeyTier .. " monkeys.")
+
+		local nextTierName = MonkeyTiers:GetNextTierName(newMonkeyTier)
+		local nextTierConfig = nextTierName and MonkeyTiers:GetTier(nextTierName)
+
+		if nextTierConfig then
+			print("autoMergeMonkeys: Valid next tier found: " .. nextTierName)
+
+			local mergedMonkeySlots = {}
+			for i = 1, 3 do
+				local monkeyToMerge = table.remove(currentTierMonkeys, 1)
+				if monkeyToMerge then
+					table.insert(mergedMonkeySlots, monkeyToMerge.SlotName)
+					removeMonkey(player, monkeyToMerge.SlotName, plotModel)
+					playerData.MonkeySpawnSlots[monkeyToMerge.SlotName] = nil
+					print("autoMergeMonkeys: Removed source monkey " .. monkeyToMerge.SlotName .. " (" .. monkeyToMerge.TierName .. ")")
+				end
+			end
+
+			local newMonkeySlotName = mergedMonkeySlots[1] or nil
+			local newMonkeyCFrame = CFrame.new(0,0,0)
+
+			if newMonkeySlotName then
+				local spawnPoint = monkeySpawnPointsFolder:FindFirstChild(newMonkeySlotName)
+				if spawnPoint then
+					newMonkeyCFrame = spawnPoint.CFrame
+					spawnPoint:SetAttribute("HasMonkey", true)
+					print("autoMergeMonkeys: Re-using slot " .. newMonkeySlotName)
+				else
+					warn("autoMergeMonkeys: Preferred slot " .. newMonkeySlotName .. " not found in Workspace. Finding another.")
+					newMonkeySlotName = nil
+				end
+			end
+
+			if not newMonkeySlotName then
+				for _, sp in pairs(monkeySpawnPointsFolder:GetChildren()) do
+					if sp:IsA("BasePart") and not sp:GetAttribute("HasMonkey") then
+						newMonkeySlotName = sp.Name
+						newMonkeyCFrame = sp.CFrame
+						sp:SetAttribute("HasMonkey", true)
+						print("autoMergeMonkeys: Found new free slot " .. newMonkeySlotName)
+						break
+					end
+				end
+			end
+
+			if newMonkeySlotName then
+				local newTierMonkey = spawnMonkey(player, newMonkeySlotName, newMonkeyCFrame, nextTierName, plotModel)
+				if newTierMonkey then
+					playerData.MonkeySpawnSlots[newMonkeySlotName] = nextTierName
+					setPlayerData(player, playerData)
+
+					print(player.Name .. " successfully merged into a " .. nextTierName .. " monkey at slot " .. newMonkeySlotName .. ".")
+
+					autoMergeMonkeys(player, nextTierName)
+				else
+					warn("autoMergeMonkeys: Failed to spawn merged monkey " .. nextTierName .. " for " .. player.Name .. " in slot " .. newMonkeySlotName .. ". Merged source monkeys were lost.")
+				end
+			else
+				warn("autoMergeMonkeys: No free slot found for merged monkey for " .. player.Name .. ". Merged source monkeys were lost.")
+			end
+		else
+			print("autoMergeMonkeys: " .. newMonkeyTier .. " is highest tier or no next tier defined. Cannot merge further.")
+		end
+	else
+		print("autoMergeMonkeys: Not enough monkeys of tier " .. newMonkeyTier .. " to merge (" .. #currentTierMonkeys .. " < 3).")
+	end
+end
+
+
+-- --- Player Connection Logic ---
+
+local function onPlayerAdded(player)
+	print("onPlayerAdded: Function started for " .. player.Name)
+	local loadedData = DataManager:LoadData(player)
+	if loadedData then
+		print("onPlayerAdded: Data loaded for " .. player.Name)
+		playerData[player.UserId] = loadedData
+
+		-- Setup replicated data for client-side UI (leaderstats, PlayerDataReplicated)
+		local leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+		leaderstats.Parent = player
+
+		local moneyValue = Instance.new("IntValue")
+		moneyValue.Name = "Money"
+		moneyValue.Value = loadedData.Money
+		moneyValue.Parent = leaderstats
+
+		local playerDataReplicated = Instance.new("Folder")
+		playerDataReplicated.Name = "PlayerDataReplicated"
+		playerDataReplicated.Parent = player
+
+		local currentPlotNameValue = Instance.new("StringValue")
+		currentPlotNameValue.Name = "CurrentPlotName"
+		currentPlotNameValue.Value = loadedData.CurrentPlotName or "None"
+		currentPlotNameValue.Parent = playerDataReplicated
+
+		local bananasHeld = Instance.new("IntValue")
+		bananasHeld.Name = "BananasHeld"
+		bananasHeld.Value = loadedData.Bananas
+		bananasHeld.Parent = playerDataReplicated
+
+		local upgradesFolder = Instance.new("Folder")
+		upgradesFolder.Name = "Upgrades"
+		upgradesFolder.Parent = playerDataReplicated
+
+		local launcherSpeedLevel = Instance.new("IntValue")
+		launcherSpeedLevel.Name = "LauncherSpeedLevel"
+		launcherSpeedLevel.Value = loadedData.Upgrades.LauncherSpeedLevel
+		launcherSpeedLevel.Parent = upgradesFolder
+		
+		
+		-- UI TextLabels are now updated via the explicit UpdatePlayerUIEvent on the client.
+
+		print(player.Name .. " has joined. Money: $" .. loadedData.Money)
+
+		-- Call explicit UI update immediately after data is set up
+		updatePlayerUI(player)
+		
+		
+		playerData.SessionTime = 0
+		playerData.BananaMultiplier = 1
+
+		sessionLoopControl[player.UserId] = true
+
+		task.spawn(function()
+			while sessionLoopControl[player.UserId] and player and player.Parent do
+				task.wait(60)
+				local data = getPlayerData(player)
+				if not data then break end
+
+				data.SessionTime += 60
+
+				local minutesPlayed = math.floor(data.SessionTime / 60)
+				local newMultiplier = math.min(2, 1 + (math.floor(minutesPlayed / 10) * 0.1))
+
+				if newMultiplier ~= data.BananaMultiplier then
+					data.BananaMultiplier = newMultiplier
+					print(player.Name .. " multiplier updated to x" .. newMultiplier)
+					UpdatePlayerUIEvent:FireClient(player, {
+						Money = data.Money,
+						Bananas = data.Bananas,
+						Multiplier = data.BananaMultiplier
+					})
+				end
+			end
+		end)
+
+		
+		-- --- MODIFIED PLOT CLAIMING LOGIC ---
+		local plotModel = nil -- Initialize plotModel as nil
+		print("onPlayerAdded: Starting plot claiming logic for " .. player.Name)
+
+		-- Try to find the plot if player has a saved CurrentPlotName
+		if loadedData.PlotOwned and loadedData.CurrentPlotName then
+			print("onPlayerAdded: Player has saved plot: " .. loadedData.CurrentPlotName .. ". Checking for existing claim.")
+			local savedPlot = availablePlotsFolder:FindFirstChild(loadedData.CurrentPlotName)
+			if not savedPlot then
+				savedPlot = claimedPlotsFolder:FindFirstChild(loadedData.CurrentPlotName)
+				if savedPlot then
+					print("onPlayerAdded: Saved plot '" .. loadedData.CurrentPlotName .. "' found in ClaimedPlots.")
+				else
+					warn("onPlayerAdded: Saved plot '" .. loadedData.CurrentPlotName .. "' not found anywhere. Forcing new plot assignment.")
+					loadedData.PlotOwned = false
+					loadedData.CurrentPlotName = nil
+					setPlayerData(player, loadedData)
+				end
+			end
+
+			if savedPlot then
+				local hasOwnerValue = savedPlot:FindFirstChild("HasOwner")
+				local ownerStringValue = savedPlot:FindFirstChild("Owner")
+
+				if hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == false then
+					hasOwnerValue.Value = true
+
+					if hasOwnerValue.Value == true then
+						plotModel = savedPlot
+						plotModel.Parent = claimedPlotsFolder
+						ownerStringValue.Value = tostring(player.UserId)
+						print("onPlayerAdded: Successfully RE-CLAIMED FREE saved plot: " .. plotModel.Name .. " for " .. player.Name)
+					else
+						warn("onPlayerAdded: Race condition: Re-claim of " .. savedPlot.Name .. " failed after setting BoolValue. Retrying.")
+						loadedData.PlotOwned = false
+						loadedData.CurrentPlotName = nil
+						setPlayerData(player, loadedData)
+					end
+				elseif hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == true then
+					warn("onPlayerAdded: Saved plot '" .. savedPlot.Name .. "' is already claimed by another player. Forcing new plot assignment.")
+					loadedData.PlotOwned = false
+					loadedData.CurrentPlotName = nil
+					setPlayerData(player, loadedData)
+				else
+					warn("onPlayerAdded: Saved plot '" .. savedPlot.Name .. "' missing 'HasOwner' or 'Owner' values. Forcing new plot assignment.")
+					loadedData.PlotOwned = false
+					loadedData.CurrentPlotName = nil
+					setPlayerData(player, loadedData)
+				end
+			end
+		end
+
+		if not loadedData.PlotOwned then
+			print("onPlayerAdded: Player needs a new plot. Checking for genuinely available plot.")
+			local availablePlotCandidates = availablePlotsFolder:GetChildren()
+
+			local n = #availablePlotCandidates
+			for i = n, 2, -1 do
+				local j = math.random(i)
+				availablePlotCandidates[i], availablePlotCandidates[j] = availablePlotCandidates[j], availablePlotCandidates[i]
+			end
+
+			for _, plotCandidate in pairs(availablePlotCandidates) do
+				local hasOwnerValue = plotCandidate:FindFirstChild("HasOwner")
+				local ownerStringValue = plotCandidate:FindFirstChild("Owner")
+
+				if hasOwnerValue and hasOwnerValue:IsA("BoolValue") and hasOwnerValue.Value == false then
+					hasOwnerValue.Value = true
+
+					if hasOwnerValue.Value == true then
+						plotModel = plotCandidate
+						plotModel.Parent = claimedPlotsFolder
+						ownerStringValue.Value = tostring(player.UserId)
+
+						loadedData.PlotOwned = true
+						loadedData.CurrentPlotName = plotModel.Name
+						setPlayerData(player, loadedData)
+
+						print(player.Name .. " claimed a NEW plot: " .. plotModel.Name)
+						break
+					else
+						warn("onPlayerAdded: Race condition: Plot " .. plotCandidate.Name .. " was just claimed by another player. Trying next.")
+					end
+				else
+				end
+			end
+
+			if not plotModel then
+				warn("onPlayerAdded: NO GENUINELY AVAILABLE PLOTS FOUND! For player " .. player.Name .. ". Kicking player.")
+				player:Kick("No available plots. Server full.")
+				return
+			end
+		end
+
+		-- Final check for plotModel before proceeding with monkey setup
+		if plotModel then
+			print("onPlayerAdded: Plot model successfully assigned and ownership set: " .. plotModel.Name)
+
+			local playerSpawnLocation = plotModel:FindFirstChild("PlayerSpawnLocation")
+			if playerSpawnLocation and playerSpawnLocation:IsA("SpawnLocation") then
+				player.RespawnLocation = playerSpawnLocation
+				print("onPlayerAdded: Set initial respawn location for " .. player.Name .. " to " .. plotModel.Name)
+			else
+				warn("onPlayerAdded: PlayerSpawnLocation (SpawnLocation instance) not found in " .. plotModel.Name .. ". Player may not spawn correctly.")
+			end
+
+			currentPlotNameValue.Value = plotModel.Name
+
+			local plotSpawnPointsFolder = plotModel:FindFirstChild("PlotSpawnPoints")
+			if not plotSpawnPointsFolder then warn("Plot " .. plotModel.Name .. " is missing a 'PlotSpawnPoints' folder!"); return end
+			print("onPlayerAdded: PlotSpawnPoints found for " .. plotModel.Name)
+
+			if loadedData.MonkeySpawnSlots then
+				print("onPlayerAdded: Processing existing MonkeySpawnSlots.")
+				local hasInitialMonkey = false
+				for slotName, tierName in pairs(loadedData.MonkeySpawnSlots) do
+					local spawnPoint = plotSpawnPointsFolder:FindFirstChild(slotName)
+					if spawnPoint then
+						spawnPoint:SetAttribute("HasMonkey", true)
+						spawnMonkey(player, slotName, spawnPoint.CFrame, tierName, plotModel)
+						hasInitialMonkey = true
+					else
+						warn("Saved slot " .. slotName .. " not found in Plot " .. plotModel.Name .. ". Removing from data.")
+						loadedData.MonkeySpawnSlots[slotName] = nil
+						setPlayerData(player, loadedData)
+					end
+				end
+				if not hasInitialMonkey then
+					print("onPlayerAdded: No initial monkey in data, spawning default Yellow for new player or cleaned plot.")
+					local initialSpawnPoint = plotSpawnPointsFolder:FindFirstChild("Spawn1")
+					if initialSpawnPoint then
+						initialSpawnPoint:SetAttribute("HasMonkey", true)
+						spawnMonkey(player, initialSpawnPoint.Name, initialSpawnPoint.CFrame, "Yellow", plotModel)
+						loadedData.MonkeySpawnSlots[initialSpawnPoint.Name] = "Yellow"
+						setPlayerData(player, loadedData)
+					else
+						warn("Initial 'Spawn1' point not found in plot " .. plotModel.Name)
+					end
+				end
+			else -- If MonkeySpawnSlots was nil, initialize and spawn initial monkey
+				print("onPlayerAdded: MonkeySpawnSlots is nil, spawning default Yellow.")
+				loadedData.MonkeySpawnSlots = {}
+				local initialSpawnPoint = plotSpawnPointsFolder:FindFirstChild("Spawn1")
+				if initialSpawnPoint then
+					initialSpawnPoint:SetAttribute("HasMonkey", true)
+					spawnMonkey(player, initialSpawnPoint.Name, initialSpawnPoint.CFrame, "Yellow", plotModel)
+					loadedData.MonkeySpawnSlots[initialSpawnPoint.Name] = "Yellow"
+					loadedData.PlotOwned = true
+					setPlayerData(player, loadedData)
+				else
+					warn("Initial 'Spawn1' point not found in plot " .. plotModel.Name)
+				end
+			end
+		else -- plotModel is nil at this point, meaning assignment failed earlier
+			warn("onPlayerAdded: Player " .. player.Name .. " has no assigned plot model after all attempts. This should not happen (final check).")
+			player:Kick("No available plots. Server full.")
+		end
+	else -- DataManager:LoadData failed
+		player:Kick("Failed to load player data. Please try again.")
+	end
+end
+
+local function onPlayerRemoving(player)
+	local data = playerData[player.UserId]
+	if data then
+		DataManager:SaveData(player, data)
+		playerData[player.UserId] = nil
+
+		local plotModel = nil
+		-- Try to find the player's plot by its name in both Claimed and Available
+		if data.PlotOwned and data.CurrentPlotName then
+			plotModel = claimedPlotsFolder:FindFirstChild(data.CurrentPlotName)
+			if not plotModel then
+				-- If not found in ClaimedPlots, it might be in AvailablePlots (e.g., server reset recently)
+				warn("onPlayerRemoving: Plot '" .. data.CurrentPlotName .. "' not found in ClaimedPlots for " .. player.Name .. ". Checking AvailablePlots.")
+				plotModel = availablePlotsFolder:FindFirstChild(data.CurrentPlotName)
+			end
+		end
+
+		if plotModel then
+			local hasOwnerValue = plotModel:FindFirstChild("HasOwner")
+			local ownerStringValue = plotModel:FindFirstChild("Owner")
+
+			-- Check if this plot is ACTUALLY owned by the player who is leaving (Player.UserId)
+			-- Or if it's in a state that needs a forced reset
+			local currentOwnerId = (ownerStringValue and ownerStringValue:IsA("StringValue")) and tonumber(ownerStringValue.Value) or nil
+			local currentHasOwner = (hasOwnerValue and hasOwnerValue:IsA("BoolValue")) and hasOwnerValue.Value or false
+
+			if currentOwnerId == player.UserId then
+				-- This is the primary case: The plot is truly owned by the player leaving.
+				print("onPlayerRemoving: Plot " .. plotModel.Name .. " is confirmed owned by " .. player.Name .. ". Proceeding with cleanup.")
+			elseif currentOwnerId == nil and currentHasOwner == false then
+				-- Plot is empty and available (race condition, player left before full claim completed).
+				-- Still clean it, as it belongs to no one.
+				print("onPlayerRemoving: Plot " .. plotModel.Name .. " for " .. player.Name .. " was free, cleaning it up.")
+			else
+				-- Plot is owned by someone else (another player in this session), or it's "None" (already reset)
+				-- We DO NOT clean up this plot.
+				print("onPlayerRemoving: Plot " .. plotModel.Name .. " for " .. player.Name .. " is not owned by them (" .. (ownerStringValue.Value or "nil") .. "). Skipping cleanup for this player.")
+				return -- Plot is not ours to clean, or already clean by another player.
+			end
+
+			-- If we reach here, the plot is either still claimed by THIS player, or is in an inconsistent state, and needs full cleanup.
+
+			-- Clean up physical monkeys/plot in workspace
+			local playerMonkeysFolder = plotModel:FindFirstChild(player.UserId .. "_Monkeys")
+			if playerMonkeysFolder then
+				playerMonkeysFolder:Destroy()
+			end
+
+			-- Reset 'HasMonkey' attribute on all spawn points within this plot
+			local plotSpawnPointsFolder = plotModel:FindFirstChild("PlotSpawnPoints")
+			if plotSpawnPointsFolder then
+				for _, spawnPoint in pairs(plotSpawnPointsFolder:GetChildren()) do
+					if spawnPoint:IsA("BasePart") then
+						spawnPoint:SetAttribute("HasMonkey", false)
+					end
+				end
+			end
+
+			-- Reset the 'Owner' StringValue on the plot model
+			if ownerStringValue and ownerStringValue:IsA("StringValue") then
+				ownerStringValue.Value = "None"
+				print("onPlayerRemoving: Reset plot " .. plotModel.Name .. " owner to None.")
+			else
+				warn("onPlayerRemoving: Plot " .. plotModel.Name .. " is missing 'Owner' StringValue. Cannot reset.")
+			end
+
+			-- Reset 'HasOwner' BoolValue to false
+			if hasOwnerValue and hasOwnerValue:IsA("BoolValue") then
+				hasOwnerValue.Value = false
+				print("onPlayerRemoving: Set plot " .. plotModel.Name .. " HasOwner to false.")
+			else
+				warn("onPlayerRemoving: Plot " .. plotModel.Name .. " is missing 'HasOwner' BoolValue. Cannot reset.")
+			end
+
+			-- Move plot back to AvailablePlots folder
+			plotModel.Parent = availablePlotsFolder
+			print("onPlayerRemoving: Moved plot " .. plotModel.Name .. " back to AvailablePlots.")
+
+		else
+			warn("onPlayerRemoving: Player " .. player.Name .. " removed but no plot model found in map for cleanup. Data was still saved.")
+		end
+	end
+end
+-- ... (MODIFIED REMOTE EVENT HANDLERS - all these will also need to pass the plotModel) ...
+local function getScaledMonkeyCost(player, tierName)
+	local tierConfig = MonkeyTiers:GetTier(tierName)
+	if not tierConfig then return math.huge end
+
+	local baseCost = tierConfig.COST or 0
+	local multiplier = tierConfig.PRICE_MULTIPLIER or 1.0
+	local ownedCount = getPlayerData(player).OwnedMonkeyCounts[tierName] or 0
+
+	return math.floor(baseCost * (multiplier ^ ownedCount))
+end
+-- RequestPurchaseEvent
+local RequestPurchaseEvent = game.ReplicatedStorage:WaitForChild("Events"):WaitForChild("RequestPurchase")
+RequestPurchaseEvent.OnServerEvent:Connect(function(player, monkeyTier)
+	local playerData = getPlayerData(player)
+	if not playerData then return end
+
+	-- --- MODIFIED: Get plot model based on current player's data ---
+	local plotModel = nil
+	if playerData.PlotOwned and playerData.CurrentPlotName then
+		plotModel = claimedPlotsFolder:FindFirstChild(playerData.CurrentPlotName)
+		if not plotModel then
+			warn("RequestPurchase: Player " .. player.Name .. " has saved plot '" .. playerData.CurrentPlotName .. "' but it's not in ClaimedPlots.")
+			-- This case should ideally not happen if onPlayerAdded logic is perfect.
+			return -- Cannot proceed without the plot model
+		end
+	else
+		warn("RequestPurchase: Player " .. player.Name .. " has no owned plot assigned in data.")
+		return -- Player has no owned plot, cannot buy monkeys
+	end
+
+	-- --- MODIFIED: Verify plot ownership using the 'Owner' StringValue ---
+	local plotOwnerValue = plotModel:FindFirstChild("Owner")
+	if not plotOwnerValue or not plotOwnerValue:IsA("StringValue") or plotOwnerValue.Value ~= tostring(player.UserId) then
+		warn("RequestPurchase: Player " .. player.Name .. " tried to buy monkey on plot " .. plotModel.Name .. " but is not the owner (Owner: " .. (plotOwnerValue and plotOwnerValue.Value or "Missing") .. ").")
+		return -- Player is not the owner of this plot according to StringValue
+	end
+
+	local plotSpawnPointsFolder = plotModel:FindFirstChild("PlotSpawnPoints") -- Get spawn points for this plot
+	if not plotSpawnPointsFolder then warn("RequestPurchase: PlotSpawnPoints not found for " .. plotModel.Name); return end
+
+	local tierConfig = MonkeyTiers:GetTier(monkeyTier)
+
+	if playerData and tierConfig and tierConfig.COST and playerData.Money >= tierConfig.COST then
+		changeMoney(player, -tierConfig.COST)
+
+		local targetSpawnPoint = nil
+		for _, spawnPoint in pairs(plotSpawnPointsFolder:GetChildren()) do -- Search within THIS plot's spawn points
+			if spawnPoint:IsA("BasePart") and not spawnPoint:GetAttribute("HasMonkey") then
+				targetSpawnPoint = spawnPoint
+				break
+			end -- Correctly closes the 'if spawnPoint:IsA ...' block
+		end -- Correctly closes the 'for' loop
+
+		if targetSpawnPoint then
+			targetSpawnPoint:SetAttribute("HasMonkey", true)
+
+			local newMonkey = spawnMonkey(player, targetSpawnPoint.Name, targetSpawnPoint.CFrame, monkeyTier, plotModel) -- Pass plotModel
+			if newMonkey then
+				playerData.MonkeySpawnSlots[targetSpawnPoint.Name] = monkeyTier
+				setPlayerData(player, playerData)
+				print(player.Name .. " bought a " .. monkeyTier .. " monkey.")
+
+				autoMergeMonkeys(player, monkeyTier)
+			else
+				warn("Failed to spawn monkey for " .. player.Name .. ", refunding money.")
+				changeMoney(player, tierConfig.COST)
+				targetSpawnPoint:SetAttribute("HasMonkey", false)
+			end -- Correctly closes the 'if newMonkey then' block
+		else
+			warn(player.Name .. " tried to buy monkey, but no empty slot found in their plot.")
+		end -- Correctly closes the 'if targetSpawnPoint then' block
+	else
+		warn(player.Name .. " cannot afford or invalid purchase request for " .. (monkeyTier or "nil"))
+	end -- Correctly closes the 'if playerData and tierConfig ...' block
+end) -- Correctly closes the 'RequestPurchaseEvent.OnServerEvent:Connect(function() block'
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+-- --- CRITICAL: Call onPlayerAdded for players already in the game ---
+-- This handles cases where the script loads after players have already joined (e.g., Studio's "Run" mode).
+for _, player in pairs(Players:GetPlayers()) do
+	onPlayerAdded(player)
+end
+-- RequestUpgradeEvent (No change to signature as it doesn't involve spawning/moving monkeys or plot structures)
+-- This event handler does not need to know the plotModel explicitly, as it just updates player data levels.
+-- If an upgrade *involved* changing plot structures, you'd pass plotModel.
+local function handlePurchaseRequest(player, monkeyTier)
+	local playerData = getPlayerData(player)
+	if not playerData then return end
+
+	local plotModel = claimedPlotsFolder:FindFirstChild(playerData.CurrentPlotName or "")
+	if not plotModel then warn("handlePurchaseRequest: plotModel not found for", player.Name); return end
+
+	local plotOwner = plotModel:FindFirstChild("Owner")
+	if not plotOwner or plotOwner.Value ~= tostring(player.UserId) then
+		warn("handlePurchaseRequest: player does not own the plot")
+		return
+	end
+
+	local spawnPoints = plotModel:FindFirstChild("PlotSpawnPoints")
+	if not spawnPoints then warn("handlePurchaseRequest: No PlotSpawnPoints"); return end
+
+	local tierConfig = MonkeyTiers:GetTier(monkeyTier)
+	if not tierConfig then
+		warn("handlePurchaseRequest: Invalid monkey tier")
+		return
+	end
+
+	local monkeyCost = getScaledMonkeyCost(player, monkeyTier)
+	if playerData.Money < monkeyCost then
+		warn("handlePurchaseRequest: Can't afford monkey tier", monkeyTier, "Cost:", monkeyCost)
+		return
+	end
+	-- Find an empty slot
+	local targetSpawnPoint
+	for _, spawn in pairs(spawnPoints:GetChildren()) do
+		if spawn:IsA("BasePart") and not spawn:GetAttribute("HasMonkey") then
+			targetSpawnPoint = spawn
+			break
+		end
+	end
+
+	if not targetSpawnPoint then
+		warn("handlePurchaseRequest: No empty spawn point")
+		return
+	end
+
+	changeMoney(player, -monkeyCost)
+	targetSpawnPoint:SetAttribute("HasMonkey", true)
+
+	local monkey = spawnMonkey(player, targetSpawnPoint.Name, targetSpawnPoint.CFrame, monkeyTier, plotModel)
+	if monkey then
+		playerData.MonkeySpawnSlots[targetSpawnPoint.Name] = monkeyTier
+		playerData.OwnedMonkeyCounts[monkeyTier] += 1
+		player:SetAttribute("Owned_" .. monkeyTier .. "_Monkeys", playerData.OwnedMonkeyCounts[monkeyTier])
+		setPlayerData(player, playerData)
+		autoMergeMonkeys(player, monkeyTier)
+	else
+		changeMoney(player, tierConfig.COST) -- Refund
+		targetSpawnPoint:SetAttribute("HasMonkey", false)
+		warn("handlePurchaseRequest: Failed to spawn monkey, refunded")
+	end
+end
+local function getScaledUpgradeCost(player, upgradeName)
+	local config = UpgradeConfig.Upgrades[upgradeName]
+	if not config then
+		warn("Upgrade config not found for:", upgradeName)
+		return math.huge
+	end
+
+	local currentLevel = getPlayerData(player).Upgrades[upgradeName .. "Level"] or 0
+
+	local baseCost = config.BaseCost or 100
+	local multiplier = config.CostMultiplier or 1.5
+
+	if typeof(baseCost) ~= "number" or typeof(multiplier) ~= "number" then
+		warn("Invalid BaseCost or CostMultiplier in config for", upgradeName)
+		return math.huge
+	end
+
+	return math.floor(baseCost * (multiplier ^ currentLevel))
+end
+
+
+local function handleUpgradeRequest(player, upgradeName)
+	local playerData = getPlayerData(player)
+	if not playerData then return end
+
+	local currentLevel = playerData.Upgrades[upgradeName .. "Level"] or 0
+	local nextLevel = currentLevel + 1
+	local upgradeData = UpgradeConfig.Upgrades[upgradeName]
+	if not upgradeData then
+		warn("handleUpgradeRequest: Invalid upgrade name:", upgradeName)
+		return
+	end
+
+	if upgradeData.MaxLevel and nextLevel > upgradeData.MaxLevel then
+		print(player.Name .. " already has max level for " .. upgradeName)
+		return
+	end
+
+	local upgradeCost = getScaledUpgradeCost(player, upgradeName)
+	if playerData.Money < upgradeCost then
+		print(player.Name .. " can't afford upgrade: " .. upgradeName)
+		return
+	end
+
+	-- Deduct money and apply upgrade
+	changeMoney(player, -upgradeCost)
+	playerData.Upgrades[upgradeName .. "Level"] = nextLevel
+	player:SetAttribute(upgradeName .. "Level", nextLevel)
+
+	-- ✅ FIX: Recalculate in-session effect (for LauncherSpeed)
+	if upgradeName == "LauncherSpeed" then
+		playerData.Upgrades.LauncherSpeed = UpgradeConfig:GetUpgradeEffect("LauncherSpeed", nextLevel)
+	end
+
+	-- Save the updated player data
+	setPlayerData(player, playerData)
+
+	-- Fire events to update UI/buttons
+	local events = game.ReplicatedStorage:WaitForChild("Events")
+
+	local refreshPurchaseButton = events:WaitForChild("RefreshPurchaseButton")
+	refreshPurchaseButton:FireClient(player, {
+		Type = "Upgrade",
+		Name = upgradeName,
+	})
+
+	local refreshUpgradeButton = events:WaitForChild("RefreshUpgradeButton")
+	refreshUpgradeButton:FireClient(player, upgradeName)
+
+	local updateUI = events:WaitForChild("UpdatePlayerUI")
+	updateUI:FireClient(player, {
+		Money = playerData.Money,
+		Bananas = playerData.Bananas
+	})
+
+	print(player.Name .. " upgraded " .. upgradeName .. " to level " .. nextLevel)
+end
+
+-- --- Module Return (Exposed functions for other scripts) ---
+local Events = game.ReplicatedStorage:WaitForChild("Events")
+local requestEvent = Events:WaitForChild("RequestUIRefresh")
+local updateUIEvent = Events:WaitForChild("UpdatePlayerUI")
+
+requestEvent.OnServerEvent:Connect(function(player)
+	local data = getPlayerData(player)
+	if data then
+		updateUIEvent:FireClient(player, {
+			Money = data.Money or 0,
+			Bananas = data.Bananas or 0
+		})
+	end
+
+
+	UpdatePlayerUIEvent:FireClient(player, {
+		Money = data.Money or 0,
+		Bananas = data.Bananas or 0, -- ✅ Ensure this line exists
+	})
+end)
+
+-- (These will remain largely the same, but the functions themselves now expect plotModel where appropriate)
+return {
+	GetPlayerData = getPlayerData,
+	SetPlayerData = setPlayerData,
+	ChangeMoney = changeMoney,
+	ChangeBananas = changeBananas,
+	SpawnMonkey = spawnMonkey,
+	RemoveMonkey = removeMonkey,
+	AutoMergeMonkeys = autoMergeMonkeys,
+	HandlePurchaseRequest = handlePurchaseRequest,
+	HandleUpgradeRequest = handleUpgradeRequest,
+	GetScaledMonkeyCost = getScaledMonkeyCost,
+	GetScaledUpgradeCost = getScaledUpgradeCost,
+	GetPlotOwnerId = function(plotModel)
+		local ownerValue = plotModel:FindFirstChild("Owner")
+		if ownerValue and ownerValue:IsA("StringValue") and ownerValue.Value ~= "None" then
+			return tonumber(ownerValue.Value)
+		end
+		return nil
+	end,
+}
