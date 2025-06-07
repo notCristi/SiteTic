@@ -1,0 +1,143 @@
+Workspace
+|__ Camera
+|__ Terrain
+|__ AvailablePlots
+    |__ Plot1
+    |__ Plot2
+    |__ Plot3
+    |__ Plot4
+    |__ Plot5
+    |__ Plot6
+    |__ PlotDevProducts
+        |__ 10Banriot
+        |__ 25Banriot
+        |__ 50Banriot
+        |__ 2xBanana
+        |__ 2xMoney
+        |__ 10xLauncherSpeed
+        |__ AutoCollect
+            |__ Billboard
+                |__ Part
+                    |__ TouchPart
+                        |__ AutoCollectTouchHandler=ONandOFF
+                        |__ Bottom
+                        |__ Top
+        |__ AutoDeposit
+        |__ AutoUpgrade
+    |__ PlotSpawnPoints
+        |__ Spawn1
+        |__ Spawn2
+        |__ ...
+        |__ Spawn56
+    |__ HasOwner
+    |__ Owner
+    |__ PlayerSpawnLocation
+|__ Bathroom Toilet
+|__ Model
+|__ Model
+|__ Model
+|__ Model
+|__ BananaLauncher
+|__ BuyTier1MonkeyButton
+|__ DepositZone
+|__ UpgradeLauncherSpeedButton
+|__ ClaimedPlots
+|__ MapSpawnLocation
+|__ Baseplate
+|__ Part
+
+ReplicatedStorage
+|__ Config
+    |__ GamepassConfig
+    |__ MonkeyTiers
+    |__ UpgradeConfig
+|__ Events
+    |__ BananaPopup
+    |__ BananaSound
+    |__ DepositBananas
+    |__ GamepassPurchased
+    |__ RefreshPurchaseButton
+    |__ RefreshUpgradeButton
+    |__ RequestMerge
+    |__ RequestPurchase
+    |__ RequestUIRefresh
+    |__ RequestUpgrade
+    |__ TeleportPlayerToPlot
+    |__ UpdatePlayerUI
+    |__ UpgradeFeedback
+|__ Models
+    |__ Tier1Monkey
+    |__ Tier2Monkey
+    |__ ...
+    |__ Tier12Monkey
+|__ Banana
+|__ Modules
+    |__ NumberFormatter
+|__ Sounds
+    |__ BananaCollectSound
+|__ SharedHelpers
+    |__ PlayerHandlerClient
+
+ServerScriptService
+|__ AutoCollectHandler
+|__ CHECKGAMEPASS
+|__ DepositZoneScript
+|__ MergeHandler
+|__ PhysicalButtonManager
+|__ PlayerSpawnTeleporter
+|__ UpgradeManager
+|__ BananaCollector
+    |__ InitializerScript
+|__ DataManager
+|__ GamepassTracker
+|__ PlayerHandler
+|__ PlotManager
+
+
+StarterGui
+|__ UIUpdate
+    |__ GUI
+        |__ BananaPopups
+            |__ LocalScript
+            |__ TemplateLabel
+        |__ Frame
+            |__ UIAspectRatioConstraint
+        |__ Progress Bar
+            |__ UIAspectRatioConstraint
+            |__ Background
+            |__ Foreground
+            |__ Text
+        |__ ImageButton
+        |__ Banner
+        |__ GiftBackground
+            |__ UICorner
+            |__ UIListLayout
+            |__ 1
+            |__ 2
+            |__ 3
+            |__ 4
+        |__ Inventory
+            |__ UICorner
+            |__ Grid
+            |__ PetFrame
+            |__ TextLabel
+        |__ MenuButtons
+            |__ Gift
+                |__ UICorner
+                |__ UIStroke
+                |__ Background
+                |__ Image
+            |__ Inventory
+                |__ UICorner
+                |__ UIStroke
+                |__ Background
+                |__ Image
+            |__ Shop
+                |__ UICorner
+                |__ UIStroke
+                |__ Background
+                |__ Image
+        |__ ShopBackground
+            |__ UICorner
+            |__ Shop
+
