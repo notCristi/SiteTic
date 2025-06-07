@@ -1,0 +1,75 @@
+-- ServerScriptService/BananaCollector
+
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local MonkeyTiers = require(game.ReplicatedStorage.Config.MonkeyTiers)
+local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
+local PlayerHandler = require(script.Parent:WaitForChild("PlayerHandler"))
+local BananaPopupEvent = game.ReplicatedStorage.Events:WaitForChild("BananaPopup")
+local BananaSoundEvent = game.ReplicatedStorage.Events:WaitForChild("BananaSound")
+local MarketplaceService = game:GetService("MarketplaceService")
+local GamepassConfig = require(game.ReplicatedStorage.Config.GamepassConfig)
+
+local BananaCollector = {}
+
+function BananaCollector.ProcessBananaCollection(bananaPart, characterPart)
+	local character = SharedHelpers.GetCharacterFromPart(characterPart)
+	if not character then return end
+
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then return end
+
+	if not bananaPart or not bananaPart.Parent or not bananaPart:FindFirstChild("Tier") then return end
+
+	local plotModel = SharedHelpers.GetPlotModelFromPart(bananaPart)
+	if not plotModel then warn("Banana not in a valid plot model.") return end
+
+	local plotOwnerId = SharedHelpers.GetPlotOwnerId(plotModel)
+	if not plotOwnerId or plotOwnerId ~= player.UserId then return end
+
+	local tierName = bananaPart.Tier.Value
+	local tierConfig = MonkeyTiers:GetTier(tierName)
+	if not tierConfig then return end
+
+	local bananaValue = tierConfig.REWARD_PER_BANANA or 1
+	local playerData = PlayerHandler.GetPlayerData(player)
+	local multiplier = playerData and playerData.BananaMultiplier or 1
+
+	PlayerHandler.ChangeBananas(player, bananaValue * multiplier)
+
+	BananaPopupEvent:FireClient(player, bananaValue * multiplier)
+	BananaSoundEvent:FireClient(player)
+
+	bananaPart:Destroy()
+end
+
+function BananaCollector.ProcessBanana(player, bananaPart)
+	if not player or not player.Character or not player.Character.PrimaryPart then return end
+	BananaCollector.ProcessBananaCollection(bananaPart, player.Character.PrimaryPart)
+end
+
+
+
+function BananaCollector.Init()
+	workspace.DescendantAdded:Connect(function(descendant)
+		if descendant:IsA("BasePart") and descendant.Name == "Banana" then
+			task.delay(0.1, function()
+				if not descendant:IsDescendantOf(workspace) then return end
+
+				if not descendant:FindFirstChild("Tier") then
+					warn("Banana is missing 'Tier' StringValue")
+					return
+				end
+
+				descendant.Touched:Connect(function(hit)
+					local character = SharedHelpers.GetCharacterFromPart(hit)
+					if character then
+						BananaCollector.ProcessBananaCollection(descendant, hit)
+					end
+				end)
+			end)
+		end
+	end)
+end
+
+return BananaCollector
