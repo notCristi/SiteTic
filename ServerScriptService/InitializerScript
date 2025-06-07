@@ -1,0 +1,2 @@
+local BananaCollector = require(script.Parent)
+BananaCollector.Init()
