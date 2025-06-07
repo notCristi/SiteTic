@@ -1,0 +1,45 @@
+-- ReplicatedStorage/Config/UpgradeConfig (ModuleScript)
+
+local UpgradeConfig = {}
+
+UpgradeConfig.Upgrades = {
+	["LauncherSpeed"] = {
+		DisplayName = "Launcher Speed",
+		BaseCost = 20,
+		CostMultiplier = 2,
+		BaseRate = 1,
+		EffectMultiplier = 2
+	}
+}
+
+
+function UpgradeConfig:GetUpgradeCost(upgradeName, level)
+	local upgrade = self.Upgrades[upgradeName]
+	if not upgrade then
+		warn("Upgrade config not found for", upgradeName)
+		return math.huge
+	end
+
+	local baseCost = upgrade.BaseCost or 100
+	local costMultiplier = upgrade.CostMultiplier or 1.5
+
+	return math.floor(baseCost * (costMultiplier ^ (level - 1)))
+end
+-- This function needs adjustment for the new LauncherSpeed logic
+function UpgradeConfig:GetUpgradeEffect(upgradeName, level)
+	upgradeName = tostring(upgradeName)
+	level = level or 0  -- ✅ fallback if level is nil
+
+	local upgrade = self.Upgrades[upgradeName]
+	if not upgrade then
+		warn("[UpgradeConfig] Invalid upgrade key:", upgradeName, debug.traceback())
+		return 0
+	end
+
+	local base = upgrade.BaseRate or 1
+	local multiplier = upgrade.EffectMultiplier or 2
+
+	return base * (multiplier ^ level)
+end
+
+return UpgradeConfig
