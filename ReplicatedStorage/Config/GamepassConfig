@@ -1,0 +1,5 @@
+return {
+	AUTO_COLLECT = 1239423713,
+	AUTO_DEPOSIT = 1240116732
+	-- Other gamepasses here in future
+}
