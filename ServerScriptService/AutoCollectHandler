@@ -1,0 +1,38 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:WaitForChild("ReplicatedStorage")
+
+local BananaCollector = require(script.Parent.BananaCollector)
+local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
+local GamepassTracker = require(script.Parent.GamepassTracker)
+local GamepassConfig = require(ReplicatedStorage.Config.GamepassConfig)
+
+-- Check and track player on join
+Players.PlayerAdded:Connect(function(player)
+	GamepassTracker.SetupPlayer(player)
+end)
+
+-- Heartbeat = auto-collect bananas for tracked players
+RunService.Heartbeat:Connect(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local ownsPass = player:GetAttribute("Gamepass_" .. tostring(GamepassConfig.AUTO_COLLECT))
+
+		-- ✅ Default AutoCollectActive to true if nil and owns pass
+		if ownsPass == true and player:GetAttribute("AutoCollectActive") == nil then
+			player:SetAttribute("AutoCollectActive", true)
+		end
+
+		local isActive = player:GetAttribute("AutoCollectActive")
+
+		if ownsPass == true and isActive == true then
+			local plotModel = SharedHelpers.GetPlayerPlot(player)
+			if plotModel then
+				for _, banana in ipairs(plotModel:GetDescendants()) do
+					if banana:IsA("BasePart") and banana.Name == "Banana" and banana:FindFirstChild("Tier") then
+						BananaCollector.ProcessBanana(player, banana)
+					end
+				end
+			end
+		end
+	end
+end)
