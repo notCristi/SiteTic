@@ -1,0 +1,30 @@
+-- PlayerHandlerClient ModuleScript
+local MonkeyTiers = require(game.ReplicatedStorage.Config.MonkeyTiers)
+
+local PlayerHandlerClient = {}
+
+function PlayerHandlerClient.GetScaledMonkeyCost(player, tierName)
+	local tierConfig = MonkeyTiers:GetTier(tierName)
+	if not tierConfig then return math.huge end
+
+	local baseCost = tierConfig.COST or 0
+	local multiplier = tierConfig.PRICE_MULTIPLIER or 1.0
+
+	local ownedCount = player:GetAttribute("Owned_" .. tierName .. "_Monkeys") or 0
+
+	return math.floor(baseCost * (multiplier ^ ownedCount))
+end
+
+function PlayerHandlerClient.GetScaledUpgradeCost(player, upgradeName)
+	local UpgradeConfig = require(game.ReplicatedStorage.Config.UpgradeConfig)
+	local config = UpgradeConfig.Upgrades[upgradeName]
+	if not config then return math.huge end
+
+	local baseCost = config.BaseCost or 100
+	local multiplier = config.CostMultiplier or 1.5
+	local level = player:GetAttribute(upgradeName .. "Level") or 0
+
+	return math.floor(baseCost * (multiplier ^ level))
+end
+
+return PlayerHandlerClient
