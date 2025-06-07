@@ -1,0 +1,120 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GamepassConfig = require(ReplicatedStorage.Config.GamepassConfig)
+
+local part = script.Parent
+print("[AutoDepositToggle] Script loaded for part:", part:GetFullName())
+
+local promptedPlayers = {}
+local toggleStates = {} -- [UserId] = true/false
+local cooldowns = {}
+local gamepassOwners = {} -- [UserId] = true
+
+local COOLDOWN_SECONDS = 1.5
+local PROMPT_COOLDOWN = 5
+local GAMEPASS_ID = GamepassConfig.AUTO_DEPOSIT
+
+-- Update part colors
+local function updateVisual(player, hasPass, isActive)
+	if not player or not player:IsDescendantOf(Players) then return end
+
+	local model = script.Parent
+	local topPart = model:FindFirstChild("Top")
+	local bottomPart = model:FindFirstChild("Bottom")
+
+	if not topPart or not bottomPart then
+		warn("Top or Bottom part missing for toggle visuals.")
+		return
+	end
+
+	if not hasPass then
+		topPart.BrickColor = BrickColor.new("New Yeller")
+		bottomPart.BrickColor = BrickColor.new("Deep orange")
+	elseif isActive then
+		topPart.BrickColor = BrickColor.new("Bright green")
+		bottomPart.BrickColor = BrickColor.new("Forest green")
+	else
+		topPart.BrickColor = BrickColor.new("Bright red")
+		bottomPart.BrickColor = BrickColor.new("Medium red")
+	end
+end
+
+-- Check and cache gamepass ownership
+local function hasGamepass(player)
+	if not player then return false end
+	local userId = player.UserId
+
+	if gamepassOwners[userId] then
+		return true
+	end
+
+	local success, result = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(userId, GAMEPASS_ID)
+	end)
+
+	if success and result then
+		gamepassOwners[userId] = true
+	end
+
+	return success and result
+end
+
+-- Handle touch toggle
+part.Touched:Connect(function(hit)
+	local character = hit:FindFirstAncestorOfClass("Model")
+	local player = character and Players:GetPlayerFromCharacter(character)
+	if not player then return end
+
+	local userId = player.UserId
+
+	if cooldowns[userId] and tick() - cooldowns[userId] < COOLDOWN_SECONDS then return end
+	cooldowns[userId] = tick()
+
+	local ownsPass = hasGamepass(player)
+
+	if not ownsPass then
+		if not promptedPlayers[userId] then
+			promptedPlayers[userId] = true
+			MarketplaceService:PromptGamePassPurchase(player, GAMEPASS_ID)
+			task.delay(PROMPT_COOLDOWN, function()
+				promptedPlayers[userId] = nil
+			end)
+		end
+		updateVisual(player, false, false)
+		return
+	end
+
+	toggleStates[userId] = not toggleStates[userId]
+	local isOn = toggleStates[userId]
+	player:SetAttribute("AutoDepositActive", isOn)
+	updateVisual(player, true, isOn)
+end)
+
+-- Handle runtime purchase
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamepassId, wasPurchased)
+	if gamepassId == GAMEPASS_ID and wasPurchased then
+		local userId = player.UserId
+		gamepassOwners[userId] = true
+		toggleStates[userId] = true
+		player:SetAttribute("AutoDepositActive", true)
+		updateVisual(player, true, true)
+	end
+end)
+
+-- Initialize on join
+Players.PlayerAdded:Connect(function(player)
+	task.delay(1, function()
+		local ownsPass = hasGamepass(player)
+
+		if ownsPass then
+			toggleStates[player.UserId] = true
+			player:SetAttribute("AutoDepositActive", true)
+			updateVisual(player, true, true)
+		else
+			toggleStates[player.UserId] = false
+			player:SetAttribute("AutoDepositActive", false)
+			updateVisual(player, false, false)
+		end
+	end)
+end)
