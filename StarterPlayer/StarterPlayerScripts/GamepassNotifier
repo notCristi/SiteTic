@@ -1,0 +1,12 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local GamepassPurchased = ReplicatedStorage:WaitForChild("Events"):WaitForChild("GamepassPurchased")
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(_, gamepassId, wasPurchased)
+	if wasPurchased then
+		GamepassPurchased:FireServer(gamepassId)
+	end
+end)
