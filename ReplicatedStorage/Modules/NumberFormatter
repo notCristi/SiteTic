@@ -1,0 +1,24 @@
+-- ReplicatedStorage.Modules.NumberFormatter
+local NumberFormatter = {}
+
+local ABBREVIATIONS = {
+	{ value = 1e24, symbol = "Sp" }, -- Septillion
+	{ value = 1e21, symbol = "Sx" }, -- Sextillion
+	{ value = 1e18, symbol = "Qi" }, -- Quintillion
+	{ value = 1e15, symbol = "Qa" }, -- Quadrillion
+	{ value = 1e12, symbol = "T"  }, -- Trillion
+	{ value = 1e9,  symbol = "B"  }, -- Billion
+	{ value = 1e6,  symbol = "M"  }, -- Million
+	{ value = 1e3,  symbol = "K"  }, -- Thousand
+}
+
+function NumberFormatter.Abbreviate(n)
+	for _, v in ipairs(ABBREVIATIONS) do
+		if n >= v.value then
+			return string.format("%.1f%s", n / v.value, v.symbol)
+		end
+	end
+	return tostring(math.floor(n))
+end
+
+return NumberFormatter
