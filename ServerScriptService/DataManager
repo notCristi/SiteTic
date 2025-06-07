@@ -1,0 +1,100 @@
+
+print("DataManager: Script starting execution.")
+-- ServerScriptService/DataManager (ModuleScript)
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local UpgradeConfig = require(game.ReplicatedStorage.Config.UpgradeConfig)
+
+local playerDataStore = DataStoreService:GetDataStore("PlayerDataV2")
+
+local DataManager = {}
+
+-- Default data for a new player
+DataManager.defaultData = {
+	Money = 0,
+	Bananas = 0, -- Player's held bananas (now potentially infinite)
+	OwnedMonkeys = {},
+	MonkeySpawnSlots = {},
+	Upgrades = {
+		LauncherSpeedLevel = 1, -- Initial level for LauncherSpeed
+	},
+	OwnedMonkeyCounts = {},
+	PlotOwned = false,
+}
+
+local function deepCopy(t)
+	local copy = {}
+	for k, v in pairs(t) do
+		if type(v) == "table" then
+			copy[k] = deepCopy(v)
+		else
+			copy[k] = v
+		end
+	end
+	return copy
+end
+
+-- Function to load a player's data
+function DataManager:LoadData(player)
+	local success, data = pcall(function()
+		return playerDataStore:GetAsync(player.UserId)
+	end)
+
+	local loadedData = {}
+	if success and data then
+		print(player.Name .. "'s data loaded successfully!")
+		loadedData = data
+	elseif success then
+		print(player.Name .. "'s data not found. Creating new data.")
+		loadedData = deepCopy(DataManager.defaultData)
+	else
+		warn("Error loading data for " .. player.Name .. ": " .. data)
+		return nil
+	end
+
+	-- Ensure all default upgrade levels exist and compute their current values
+	-- Initialize all upgrade levels from defaultData or loaded data
+	for upgradeName, defaults in pairs(DataManager.defaultData.Upgrades) do
+		if loadedData.Upgrades[upgradeName] == nil then
+			loadedData.Upgrades[upgradeName] = defaults
+		end
+	end
+	
+	for name, level in pairs(loadedData.Upgrades) do
+		player:SetAttribute(name .. "Level", level)
+	end
+	
+	loadedData.OwnedMonkeyCounts = loadedData.OwnedMonkeyCounts or {}
+	for tierName in pairs(require(game.ReplicatedStorage.Config.MonkeyTiers).Tiers) do
+		if loadedData.OwnedMonkeyCounts[tierName] == nil then
+			loadedData.OwnedMonkeyCounts[tierName] = 0
+		end
+	end
+	-- Compute the actual LauncherSpeed processing rate based on level
+	loadedData.Upgrades.LauncherSpeed = UpgradeConfig:GetUpgradeEffect("LauncherSpeed", loadedData.Upgrades.LauncherSpeedLevel)
+
+	-- Remove any old 'BananaCapacity' upgrade levels from loaded data if they exist
+	if loadedData.Upgrades.BananaCapacityLevel ~= nil then
+		loadedData.Upgrades.BananaCapacityLevel = nil
+		-- Clean up other old banana capacity related fields if any, e.g. loadedData.Upgrades.BananaCapacity = nil
+	end
+	-- Player's banana capacity is now effectively infinite, no need to store it
+
+	return loadedData
+end
+
+
+-- Function to save a player's data
+function DataManager:SaveData(player, data)
+	local success, err = pcall(function()
+		playerDataStore:SetAsync(player.UserId, data)
+	end)
+
+	if success then
+		print(player.Name .. "'s data saved successfully!")
+	else
+		warn("Error saving data for " .. player.Name .. ": " .. err)
+	end
+end
+
+return DataManager
