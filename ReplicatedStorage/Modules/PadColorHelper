@@ -1,0 +1,34 @@
+local colorMap = {
+	Default = {
+		NotOwned = BrickColor.Yellow(),
+		Active = BrickColor.Green(),
+		Inactive = BrickColor.Red(),
+		Sound = nil,
+		Particles = nil,
+	},
+
+	AutoCollect = {
+		NotOwned = BrickColor.Yellow(),
+		Active = BrickColor.Green(),
+		Inactive = BrickColor.Red(),
+		Sound = nil,--- "rbxassetid://12345678",
+		Particles = nil,--"Sparkles",
+	},
+	
+	AutoDeposit = {
+		NotOwned = BrickColor.Yellow(),
+		Active = BrickColor.Green(),
+		Inactive = BrickColor.Red(),
+		Sound = nil,--- "rbxassetid://12345678",
+		Particles = nil,--"Sparkles",
+	},
+}
+
+local module = {}
+
+function module.GetPadVisuals(padName, state)
+	local config = colorMap[padName] or colorMap.Default
+	return config[state], config.Sound, config.Particles
+end
+
+return module
