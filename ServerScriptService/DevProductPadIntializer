@@ -1,0 +1,29 @@
+local DevProductHandler = require(script.Parent.DevProductHandler)
+local claimedPlots = workspace:WaitForChild("ClaimedPlots")
+
+local function setupDevProductPads(plotModel)
+	local devProductsFolder = plotModel:FindFirstChild("PlotDevProducts")
+	if not devProductsFolder then return end
+
+	for _, padFolder in pairs(devProductsFolder:GetChildren()) do
+		local touchPart = padFolder:FindFirstChild("TouchPart")
+		if touchPart then
+			DevProductHandler:InitPad(touchPart)
+		else
+			warn("DevProductPadInitializer: Missing TouchPart in", padFolder:GetFullName())
+		end
+	end
+end
+
+for _, plot in pairs(claimedPlots:GetChildren()) do
+	if plot:IsA("Model") then
+		setupDevProductPads(plot)
+	end
+end
+
+claimedPlots.ChildAdded:Connect(function(child)
+	task.wait(1)
+	if child:IsA("Model") then
+		setupDevProductPads(child)
+	end
+end)
