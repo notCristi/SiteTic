@@ -1,0 +1,9 @@
+local MarketplaceService = game:GetService("MarketplaceService")
+local DevProductHandler = require(script.Parent.DevProductHandler)
+
+MarketplaceService.PromptProductPurchaseFinished:Connect(function(player, productId, wasPurchased)
+	if wasPurchased then
+		-- Optionally re-grant instantly (UI purposes), but ProcessReceipt will still be called
+		DevProductHandler.GrantProduct(player, productId)
+	end
+end)
