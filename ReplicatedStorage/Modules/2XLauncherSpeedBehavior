@@ -1,0 +1,13 @@
+local module = {}
+
+function module:Activate(player)
+	player:SetAttribute("DoubleSpeedActive", true)
+	--print("[2XLauncherSpeed] Enabled for", player.Name)
+end
+
+function module:Deactivate(player)
+	player:SetAttribute("DoubleSpeedActive", false)
+	--print("[2XLauncherSpeed] Disabled for", player.Name)
+end
+
+return module
