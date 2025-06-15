@@ -4,10 +4,12 @@ local Players = game:GetService("Players")
 local PlayerHandler = require(script.Parent.PlayerHandler)
 local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
 local GamepassConfig = require(game.ReplicatedStorage.Config.GamepassConfig)
-local GamepassTracker = require(script.Parent.GamepassTracker)
 
 local launcherBananaQueue = {} -- [UserId] = banana count in launcher
 local lastDepositTime = {} -- for auto-deposit rate limiting
+
+local AUTO_DEPOSIT_GAMEPASS_ID = GamepassConfig.AutoDeposit and GamepassConfig.AutoDeposit.GamepassId or 1240116732
+
 
 local AUTO_DEPOSIT_GAMEPASS_ID = GamepassConfig.AUTO_DEPOSIT or 1240116732
 local AUTO_DEPOSIT_INTERVAL = 2 -- seconds
@@ -24,7 +26,7 @@ local function tryAutoDeposit(player)
 	if bananas > 0 then
 		launcherBananaQueue[player.UserId] = (launcherBananaQueue[player.UserId] or 0) + bananas
 		PlayerHandler.ChangeBananas(player, -bananas)
-		print("[AutoDeposit] " .. player.Name .. " auto-deposited " .. bananas .. " bananas.")
+		--print("[AutoDeposit] " .. player.Name .. " auto-deposited " .. bananas .. " bananas.")
 	end
 end
 -- Handles manual deposit
@@ -47,11 +49,11 @@ local function onDepositZoneTouched(depositZonePart, hit)
 	launcherBananaQueue[player.UserId] = (launcherBananaQueue[player.UserId] or 0) + bananasToDeposit
 	PlayerHandler.ChangeBananas(player, -bananasToDeposit)
 
-	print(`[DepositZone] {player.Name} manually deposited {bananasToDeposit} bananas.`)
+	--print(`[DepositZone] {player.Name} manually deposited {bananasToDeposit} bananas.`)
 end
 
 local function processLauncherQueue(player)
-	tryAutoDeposit(player) -- ✅ Deposit before converting
+	tryAutoDeposit(player)
 
 	local playerData = PlayerHandler.GetPlayerData(player)
 	if not playerData then return end
@@ -62,12 +64,14 @@ local function processLauncherQueue(player)
 		local moneyPerBanana = 1
 
 		local bananasToSell = math.min(playerLauncherBananas, launcherRate)
-		local earned = bananasToSell * moneyPerBanana
+
+		local multiplier = player:GetAttribute("MoneyMultiplier") or 1
+		local earned = bananasToSell * moneyPerBanana * multiplier
 
 		PlayerHandler.ChangeMoney(player, earned)
 		launcherBananaQueue[player.UserId] = playerLauncherBananas - bananasToSell
 
-		print("[Launcher] " .. player.Name .. " sold " .. bananasToSell .. " bananas. $" .. earned)
+		--print("[Launcher] " .. player.Name .. " sold " .. bananasToSell .. " bananas. $" .. earned)
 	end
 end
 
@@ -78,7 +82,7 @@ local function setupDepositZones()
 	local function connectPlot(plotModel)
 		local depositZone = plotModel:FindFirstChild("DepositZone")
 		if depositZone and depositZone:IsA("BasePart") then
-			print("[DepositZone] Hooking into:", depositZone:GetFullName())
+			--print("[DepositZone] Hooking into:", depositZone:GetFullName())
 			depositZone.Touched:Connect(function(hit)
 				onDepositZoneTouched(depositZone, hit)
 			end)
