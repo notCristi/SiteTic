@@ -1,33 +1,62 @@
-local GamepassConfig = {}
+-- ReplicatedStorage.Config.GamepassConfig
 
-GamepassConfig.IDs = {
-    AUTO_COLLECT = 1239423713,
-    AUTO_DEPOSIT = 1240116732,
-    AUTO_UPGRADE = 0,
-    ["10Banriot"] = 0,
-    ["25Banriot"] = 0,
-    ["50Banriot"] = 0,
-    ["2xBanana"] = 0,
-    ["2xMoney"] = 0,
-    ["10xLauncherSpeed"] = 0,
+return {
+	-- PAD_NAME = {
+	--     GamepassId = <ID>,
+	--     ModuleName = "<BehaviorModule>",
+	--     IsToggleable = true/false
+	-- }
+
+	AutoCollect = {
+		GamepassId = 1239423713, -- Replace with your actual ID
+		ModuleName = "AutoCollectBehavior",
+		IsToggleable = true,
+		EnableFlash = false, -- or false
+	},
+	
+
+	AutoDeposit = {
+		GamepassId = 1240116732, -- Replace with your actual ID
+		ModuleName = "AutoDepositBehavior",
+		IsToggleable = true,
+		EnableFlash = true, -- or false
+	},
+	
+	AutoDeposit = {
+		GamepassId = 1240116732, -- Replace with your actual ID
+		ModuleName = "AutoDepositBehavior",
+		IsToggleable = true,
+		EnableFlash = true, -- or false
+	},
+
+
+	["2xBanana"] = {
+		GamepassId = 1239353876, -- 🔁 Replace with real ID
+		ModuleName = "2XBananaBehavior", -- Optional, not needed unless visual
+		IsToggleable = false,
+		EnableFlash = true,
+	},
+
+	["2xMoney"] = {
+		GamepassId = 1239268000,
+		ModuleName = "2XMoneyBehavior",
+		IsToggleable = false,
+		EnableFlash = true,
+	},
+
+	["10xLauncherSpeed"] = {
+		GamepassId = 1239324026,
+		ModuleName = "2XLauncherSpeedBehavior",
+		IsToggleable = false,
+		EnableFlash = true,
+	}
+
+
+	--DoubleCash = {
+		--GamepassId = 87654321,
+		--ModuleName = "DoubleCashBehavior",
+		--IsToggleable = false,
+	--},
+
+	-- Add more pads here
 }
-
-function GamepassConfig.GetId(name)
-    return GamepassConfig.IDs[name]
-end
-
-function GamepassConfig.GetNames()
-    local t = {}
-    for name in pairs(GamepassConfig.IDs) do
-        table.insert(t, name)
-    end
-    table.sort(t)
-    return t
-end
-
--- Backwards compatibility
-for k,v in pairs(GamepassConfig.IDs) do
-    GamepassConfig[k] = v
-end
-
-return GamepassConfig
