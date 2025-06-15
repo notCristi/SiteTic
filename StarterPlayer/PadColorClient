@@ -1,0 +1,92 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+
+local PadColorUpdate = ReplicatedStorage:WaitForChild("Events"):WaitForChild("PadColorUpdate")
+local player = Players.LocalPlayer
+
+local TWEEN_TIME = 0.35
+
+--print("[Client] PadColorClient running...")
+local PadColorUpdate = ReplicatedStorage:WaitForChild("Events"):WaitForChild("PadColorUpdate")
+--print("[Client] Found RemoteEvent:", PadColorUpdate.Name)
+
+
+local function tweenColor(part, targetColor)
+	if not part or not part:IsA("BasePart") then return end
+--	print("[TweenColor] Tweener for:", part:GetFullName(), "to:", targetColor)
+	local tween = TweenService:Create(part, TweenInfo.new(TWEEN_TIME), { Color = BrickColor.new(targetColor).Color })
+	tween:Play()
+end
+
+local function pulse(part)
+	if not part or not part:IsA("BasePart") then return end
+	--print("[Pulse] Flashing:", part:GetFullName())
+	local originalColor = part.Color
+	part.Color = Color3.new(1, 1, 1)
+	task.delay(0.05, function()
+		part.Color = originalColor
+	end)
+end
+
+local function safelyGetPart(part)
+	-- Wait for up to 3 seconds for part to replicate
+	local maxWait = 6
+	local waited = 0
+
+	while not part and waited < maxWait do
+		wait(0.1)
+		waited += 0.1
+	end
+
+	return part
+end
+
+PadColorUpdate.OnClientEvent:Connect(function(padTouchPart, colorName, soundId, particleType, enableFlash)
+	if not padTouchPart then
+		warn("[PadColorUpdate] Received NIL padTouchPart!")
+		return
+	end
+
+	local part = safelyGetPart(padTouchPart)
+	if not part then
+		warn("[PadColorUpdate] padTouchPart failed to replicate after waiting.")
+		return
+	end
+	local top = padTouchPart:FindFirstChild("Top")
+	local bottom = padTouchPart:FindFirstChild("Bottom")
+
+	if not top and not bottom then
+		warn("[PadColorUpdate] No Top or Bottom found in padTouchPart:", padTouchPart:GetFullName())
+	end
+
+	for _, part in { top, bottom } do
+		if part and part:IsA("BasePart") then
+			if enableFlash then
+				pulse(part)
+			end
+			tweenColor(part, colorName)
+		end
+	end
+
+	-- Sound
+	if soundId and (top or bottom) then
+		local sound = Instance.new("Sound")
+		sound.SoundId = soundId
+		sound.Volume = 1
+		sound.Parent = top or bottom
+		sound:Play()
+		Debris:AddItem(sound, 2)
+	--	print("[Sound] Played:", soundId)
+	end
+
+	-- Particles
+	if particleType and (top or bottom) then
+		local particle = Instance.new(particleType)
+		particle.Parent = top or bottom
+		particle:Emit(20)
+		Debris:AddItem(particle, 2)
+	--	print("[Particle] Emitted:", particleType)
+	end
+end)
