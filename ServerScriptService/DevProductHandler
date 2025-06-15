@@ -1,0 +1,89 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local DevProductConfig = require(game.ReplicatedStorage.Config.DevProductConfig)
+local PlotUtils = require(game.ReplicatedStorage.Modules.PlotUtils)
+local PlayerHandler = require(script.Parent.PlayerHandler)
+
+local DevProductHandler = {}
+
+local lastTouch = {} -- [player][padName] = os.clock()
+local TOUCH_COOLDOWN = 0.5
+local pendingPurchases = {} -- [UserId] = padName
+local processedReceipts = {} -- [PurchaseId] = true ✅ prevents duplicate reward
+
+-- 🔁 Safe reward logic with duplication guard
+function DevProductHandler.GrantProduct(player, productId)
+	for padName, config in pairs(DevProductConfig) do
+		if config.DevProductId == productId then
+			for i = 1, config.Count do
+				PlayerHandler.HandlePurchaseRequest(player, config.Tier, true)
+			end
+
+			print(`[DevProductHandler] Gave {config.Count}x {config.Tier} monkeys to {player.Name}`)
+			return true
+		end
+	end
+	return false
+end
+
+-- 🟩 Used only by ProcessReceipt
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+	if processedReceipts[receiptInfo.PurchaseId] then
+		-- Already granted, just confirm to Roblox
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+	if not player then
+		warn("[DevProductHandler] Player not found for receipt:", receiptInfo.PlayerId)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local success = DevProductHandler.GrantProduct(player, receiptInfo.ProductId)
+	if success then
+		processedReceipts[receiptInfo.PurchaseId] = true
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	else
+		warn("[DevProductHandler] Failed to grant DevProduct:", receiptInfo.ProductId, "for", player.Name)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+end
+
+-- 🚪 UI pad interaction trigger
+function DevProductHandler:InitPad(padTouchPart)
+	if not padTouchPart or not padTouchPart:IsA("BasePart") then
+		warn("[DevProductHandler] Invalid TouchPart passed:", padTouchPart)
+		return
+	end
+
+	local current = padTouchPart
+	local padName
+
+	while current and current ~= workspace do
+		if DevProductConfig[current.Name] then
+			padName = current.Name
+			break
+		end
+		current = current.Parent
+	end
+
+	if not padName then return end
+	local config = DevProductConfig[padName]
+	if not config then return end
+
+	padTouchPart.Touched:Connect(function(hit)
+		local character = hit.Parent
+		local player = Players:GetPlayerFromCharacter(character)
+		if not player then return end
+		if not PlotUtils:IsPlayerOwnerOfPart(player, padTouchPart) then return end
+
+		lastTouch[player] = lastTouch[player] or {}
+		if os.clock() - (lastTouch[player][padName] or 0) < TOUCH_COOLDOWN then return end
+		lastTouch[player][padName] = os.clock()
+
+		pendingPurchases[player.UserId] = padName
+		MarketplaceService:PromptProductPurchase(player, config.DevProductId)
+	end)
+end
+
+return DevProductHandler
