@@ -1,49 +1,55 @@
 local player = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local updateEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("UpdatePlayerUI")
+local gamepassStatusEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("UpdateMultiplierGamepassStatus")
 
 local gui = script.Parent
 local barFrame = gui:WaitForChild("Progress Bar"):WaitForChild("Foreground"):WaitForChild("Bar")
 local multiplierText = gui:WaitForChild("Progress Bar"):WaitForChild("Text"):WaitForChild("CURRENTMULTIPLIER")
 
 -- CONFIG
-local secondsPerBoost = 600 -- 10 minutes
-local maxMultiplier = 2
+local secondsPerBoost = 600
+local maxBananaMultiplier = 2
 
--- TRACKER
-local currentMultiplier = 1
-local timeUntilNext = 0 -- how many seconds accumulated since last boost
+-- STATE
+local bananaMultiplier = 1
+local moneyMultiplierBonus = 0
+local timeUntilNext = 0
 
--- UI Update Function
+-- ✅ Final combined multiplier display
 local function updateMultiplierDisplay()
-	if currentMultiplier >= maxMultiplier then
-		multiplierText.Text = string.format("CURRENT MULTIPLIER: %.2fX !MAXED!", currentMultiplier)
-		barFrame:TweenSize(UDim2.new(1, 0, 1, 0), "Out", "Quad", 0.3, true)
-	else
-		multiplierText.Text = string.format("CURRENT MULTIPLIER: %.2fX", currentMultiplier)
-		local progress = timeUntilNext / secondsPerBoost
-		barFrame:TweenSize(UDim2.new(progress, 0, 1, 0), "Out", "Quad", 0.3, true)
-	end
+	local combinedMultiplier = bananaMultiplier + moneyMultiplierBonus
+	multiplierText.Text = string.format("CURRENT MULTIPLIER: %.1fX", combinedMultiplier)
+
+	local progress = math.clamp(timeUntilNext / secondsPerBoost, 0, 1)
+	barFrame:TweenSize(UDim2.new(progress, 0, 1, 0), "Out", "Quad", 0.3, true)
 end
 
--- Handle UI updates from the server
+-- 🟢 Server tells us how much bonus we get from Gamepass + Premium
+gamepassStatusEvent.OnClientEvent:Connect(function(newMoneyBonus)
+	moneyMultiplierBonus = newMoneyBonus - 1
+	updateMultiplierDisplay()
+end)
+
+-- 🟢 Server tells us our session banana multiplier
 updateEvent.OnClientEvent:Connect(function(uiData)
 	if uiData.Multiplier then
-		local oldMultiplier = currentMultiplier
-		currentMultiplier = uiData.Multiplier
+		local old = bananaMultiplier
+		bananaMultiplier = uiData.Multiplier
 
-		if currentMultiplier > oldMultiplier then
-			timeUntilNext = 0 -- reset on increase
+		if bananaMultiplier > old then
+			timeUntilNext = 0
 		end
+
 		updateMultiplierDisplay()
 	end
 end)
 
--- Simulate local timer for progress bar animation (1 sec intervals)
+-- 🔁 Animate bar
 task.spawn(function()
 	while true do
 		task.wait(1)
-		if currentMultiplier < maxMultiplier then
+		if bananaMultiplier < maxBananaMultiplier then
 			timeUntilNext += 1
 			updateMultiplierDisplay()
 		end
