@@ -1,0 +1,23 @@
+-- ServerScriptService.AutoDepositHandler
+
+local module = {}
+
+local activePlayers = {}
+
+function module:Activate(player)
+	activePlayers[player] = true
+	player:SetAttribute("AutoDepositActive", true)
+	--print("[AutoDepositHandler] Activated for", player.Name)
+end
+
+function module:Deactivate(player)
+	activePlayers[player] = nil
+	player:SetAttribute("AutoDepositActive", false)
+	--print("[AutoDepositHandler] Deactivated for", player.Name)
+end
+
+function module:IsEnabled(player)
+	return activePlayers[player] == true
+end
+
+return module
