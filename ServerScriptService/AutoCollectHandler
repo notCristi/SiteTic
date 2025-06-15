@@ -1,35 +1,49 @@
+-- ServerScriptService/AutoCollectHandler
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:WaitForChild("ReplicatedStorage")
 
 local BananaCollector = require(script.Parent.BananaCollector)
-local SharedHelpers = require(game.ReplicatedStorage.SharedHelpers)
-local GamepassTracker = require(script.Parent.GamepassTracker)
-local GamepassConfig = require(ReplicatedStorage.Config.GamepassConfig)
+local PlotUtils = require(game.ReplicatedStorage.Modules.PlotUtils)
 
--- GamepassTracker handles PlayerAdded internally
+local AutoCollectHandler = {}
 
--- Heartbeat = auto-collect bananas for tracked players
-RunService.Heartbeat:Connect(function()
-	for _, player in ipairs(Players:GetPlayers()) do
-		local ownsPass = player:GetAttribute("Gamepass_" .. tostring(GamepassConfig.AUTO_COLLECT))
+-- Tracks which players have AutoCollect enabled
+local activePlayers = {}
 
-		-- ✅ Default AutoCollectActive to true if nil and owns pass
-		if ownsPass == true and player:GetAttribute("AutoCollectActive") == nil then
-			player:SetAttribute("AutoCollectActive", true)
-		end
+-- Radius around player to collect bananas
+local COLLECTION_RADIUS = 12
 
-		local isActive = player:GetAttribute("AutoCollectActive")
+function AutoCollectHandler:Activate(player)
+	activePlayers[player] = true
+end
 
-		if ownsPass == true and isActive == true then
-			local plotModel = SharedHelpers.GetPlayerPlot(player)
-			if plotModel then
-				for _, banana in ipairs(plotModel:GetDescendants()) do
-					if banana:IsA("BasePart") and banana.Name == "Banana" and banana:FindFirstChild("Tier") then
-						BananaCollector.ProcessBanana(player, banana)
-					end
+function AutoCollectHandler:Deactivate(player)
+	activePlayers[player] = nil
+end
+
+-- Optional: External method for scripts to query state
+function AutoCollectHandler:IsEnabled(player)
+	return activePlayers[player] == true
+end
+
+-- Periodic check for bananas nearby
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for player, _ in pairs(activePlayers) do
+			local plot = PlotUtils:GetPlayerPlot(player)
+			if not plot then continue end
+
+			for _, banana in ipairs(plot:GetDescendants()) do
+				if banana:IsA("BasePart") and banana.Name == "Banana" and banana:FindFirstChild("Tier") then
+					BananaCollector.ProcessBanana(player, banana)
 				end
 			end
 		end
 	end
 end)
+
+
+
+return AutoCollectHandler
