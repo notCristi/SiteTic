@@ -3,97 +3,97 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local function getClaimedPlotsFolder()
-    for _ = 1, 50 do
-        local folder = workspace:FindFirstChild("ClaimedPlots")
-        if folder then return folder end
-        task.wait(0.1)
-    end
-    warn("SharedHelpers: Timed out waiting for ClaimedPlots folder!")
-    return nil
+	for _ = 1, 50 do
+		local folder = workspace:FindFirstChild("ClaimedPlots")
+		if folder then return folder end
+		task.wait(0.1)
+	end
+	warn("SharedHelpers: Timed out waiting for ClaimedPlots folder!")
+	return nil
 end
 
 local claimedPlotsFolder = getClaimedPlotsFolder()
 
 function SharedHelpers.GetCharacterFromPart(part)
-    local current = part
-    while current and current ~= workspace do
-        if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
-            return current
-        end
-        current = current.Parent
-    end
-    return nil
+	local current = part
+	while current and current ~= workspace do
+		if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
 end
 
 function SharedHelpers.GetPlotModelFromCharacter(character)
-    local player = Players:GetPlayerFromCharacter(character)
-    if not player then return nil end
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then return nil end
 
-    local replicatedData = player:FindFirstChild("PlayerDataReplicated")
-    if not replicatedData then return nil end
+	local replicatedData = player:FindFirstChild("PlayerDataReplicated")
+	if not replicatedData then return nil end
 
-    local currentPlotNameValue = replicatedData:FindFirstChild("CurrentPlotName")
-    if not currentPlotNameValue then return nil end
+	local currentPlotNameValue = replicatedData:FindFirstChild("CurrentPlotName")
+	if not currentPlotNameValue then return nil end
 
-    local folder = claimedPlotsFolder or getClaimedPlotsFolder()
-    if not folder then return nil end
+	local folder = claimedPlotsFolder or getClaimedPlotsFolder()
+	if not folder then return nil end
 
-    return folder:FindFirstChild(currentPlotNameValue.Value)
+	return folder:FindFirstChild(currentPlotNameValue.Value)
 end
 
 function SharedHelpers.PlayerHasGamepass(player, gamepassId)
-    if not player or not player:IsA("Player") then
-        warn("PlayerHasGamepass called with invalid player:", player)
-        return false
-    end
-    local success, hasPass = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, gamepassId)
-    if not success then
-        warn("Gamepass check failed for", player, "-", hasPass)
-        return false
-    end
-    return hasPass
+	if not player or not player:IsA("Player") then
+		warn("PlayerHasGamepass called with invalid player:", player)
+		return false
+	end
+	local success, hasPass = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, gamepassId)
+	if not success then
+		warn("Gamepass check failed for", player, "-", hasPass)
+		return false
+	end
+	return hasPass
 end
 
 function SharedHelpers.GetPlayerPlot(player)
-    local replicatedData = player:FindFirstChild("PlayerDataReplicated")
-    if not replicatedData then return nil end
+	local replicatedData = player:FindFirstChild("PlayerDataReplicated")
+	if not replicatedData then return nil end
 
-    local currentPlotNameValue = replicatedData:FindFirstChild("CurrentPlotName")
-    if not currentPlotNameValue then return nil end
+	local currentPlotNameValue = replicatedData:FindFirstChild("CurrentPlotName")
+	if not currentPlotNameValue then return nil end
 
-    local folder = claimedPlotsFolder or getClaimedPlotsFolder()
-    if not folder then return nil end
+	local folder = claimedPlotsFolder or getClaimedPlotsFolder()
+	if not folder then return nil end
 
-    return folder:FindFirstChild(currentPlotNameValue.Value)
+	return folder:FindFirstChild(currentPlotNameValue.Value)
 end
 
 function SharedHelpers.GetPlotModelFromPart(part)
-    local current = part
-    if not (part.Name:match("^Plot%d+$") and part:IsA("Model")) then
-        current = part.Parent
-    end
+	local current = part
+	if not (part.Name:match("^Plot%d+$") and part:IsA("Model")) then
+		current = part.Parent
+	end
 
-    local expectedFolder = workspace:FindFirstChild("ClaimedPlots")
-    if not expectedFolder then
-        warn("SharedHelpers.GetPlotModelFromPart: ClaimedPlots folder NOT found in Workspace!")
-        return nil
-    end
+	local expectedFolder = workspace:FindFirstChild("ClaimedPlots")
+	if not expectedFolder then
+		warn("SharedHelpers.GetPlotModelFromPart: ClaimedPlots folder NOT found in Workspace!")
+		return nil
+	end
 
-    while current and current ~= workspace do
-        if current.Name:match("^Plot%d+$") and current:IsA("Model") and current.Parent == expectedFolder then
-            return current
-        end
-        current = current.Parent
-    end
-    return nil
+	while current and current ~= workspace do
+		if current.Name:match("^Plot%d+$") and current:IsA("Model") and current.Parent == expectedFolder then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
 end
 
 function SharedHelpers.GetPlotOwnerId(plotModel)
-    local ownerValue = plotModel:FindFirstChild("Owner")
-    if ownerValue and ownerValue:IsA("StringValue") and ownerValue.Value ~= "None" then
-        return tonumber(ownerValue.Value)
-    end
-    return nil
+	local ownerValue = plotModel:FindFirstChild("Owner")
+	if ownerValue and ownerValue:IsA("StringValue") and ownerValue.Value ~= "None" then
+		return tonumber(ownerValue.Value)
+	end
+	return nil
 end
 
 return SharedHelpers
