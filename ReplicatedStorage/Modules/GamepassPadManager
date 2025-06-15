@@ -1,0 +1,25 @@
+-- ReplicatedStorage.Modules.AutoCollectBehavior
+
+local Players = game:GetService("Players")
+local PlotUtils = require(game.ReplicatedStorage.Modules.PlotUtils)
+
+-- We access the AutoCollectHandler from ServerScriptService
+local AutoCollectHandler = require(game.ServerScriptService:WaitForChild("AutoCollectHandler"))
+
+local module = {}
+
+function module:Activate(player)
+	-- Enable auto-collect behavior
+	AutoCollectHandler:Activate(player)
+
+	--print("[AutoCollect] Enabled for", player.Name)
+end
+
+function module:Deactivate(player)
+	-- Disable auto-collect behavior
+	AutoCollectHandler:Deactivate(player)
+
+--	print("[AutoCollect] Disabled for", player.Name)
+end
+
+return module
