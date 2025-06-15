@@ -1,0 +1,13 @@
+local module = {}
+
+function module:Activate(player)
+	player:SetAttribute("DoubleBananaActive", true)
+	--print("[2XBanana] Enabled for", player.Name)
+end
+
+function module:Deactivate(player)
+	player:SetAttribute("DoubleBananaActive", false)
+--	print("[2XBanana] Disabled for", player.Name)
+end
+
+return module
