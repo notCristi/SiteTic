@@ -1,0 +1,55 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GamepassConfig = require(ReplicatedStorage.Config.GamepassConfig)
+
+local module = {}
+
+function module:Activate(player)
+	local multiplier = 1 -- base
+
+	-- Premium Bonus
+	local isPremium = player.MembershipType == Enum.MembershipType.Premium
+	if isPremium then
+		multiplier += 1.5
+	end
+
+	-- Gamepass Bonus
+	local gamepassId = GamepassConfig["2xMoney"].GamepassId
+	local hasGamepass = false
+	pcall(function()
+		hasGamepass = MarketplaceService:UserOwnsGamePassAsync(player.UserId, gamepassId)
+	end)
+
+	if hasGamepass then
+		multiplier += 2
+	end
+
+	-- Set attributes
+	player:SetAttribute("DoubleMoneyActive", hasGamepass)
+	player:SetAttribute("MoneyMultiplier", multiplier)
+
+	-- Notify client
+	local event = ReplicatedStorage.Events:FindFirstChild("UpdateMultiplierGamepassStatus")
+	if event then
+		event:FireClient(player, multiplier)
+	end
+
+	--print("[2xMoneyBehavior] Activated for", player.Name, "→ Multiplier:", multiplier)
+end
+
+function module:Deactivate(player)
+	player:SetAttribute("DoubleMoneyActive", false)
+	player:SetAttribute("MoneyMultiplier", 1)
+
+	-- Notify client reset
+	local event = ReplicatedStorage.Events:FindFirstChild("UpdateMultiplierGamepassStatus")
+	if event then
+		event:FireClient(player, 1)
+	end
+
+	--print("[2xMoneyBehavior] Deactivated for", player.Name)
+end
+
+return module
