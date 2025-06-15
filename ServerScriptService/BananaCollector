@@ -32,6 +32,12 @@ function BananaCollector.ProcessBananaCollection(bananaPart, characterPart)
 	if not tierConfig then return end
 
 	local bananaValue = tierConfig.REWARD_PER_BANANA or 1
+
+	if player:GetAttribute("DoubleBananaActive") then
+		bananaValue *= 2
+	end
+
+	
 	local playerData = PlayerHandler.GetPlayerData(player)
 	local multiplier = playerData and playerData.BananaMultiplier or 1
 
@@ -44,9 +50,12 @@ function BananaCollector.ProcessBananaCollection(bananaPart, characterPart)
 end
 
 function BananaCollector.ProcessBanana(player, bananaPart)
-	if not player or not player.Character or not player.Character.PrimaryPart then return end
-	BananaCollector.ProcessBananaCollection(bananaPart, player.Character.PrimaryPart)
+	if not player or not player.Character then return end
+	local root = player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	BananaCollector.ProcessBananaCollection(bananaPart, root)
 end
+	
 
 
 
