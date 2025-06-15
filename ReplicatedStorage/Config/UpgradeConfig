@@ -5,8 +5,8 @@ local UpgradeConfig = {}
 UpgradeConfig.Upgrades = {
 	["LauncherSpeed"] = {
 		DisplayName = "Launcher Speed",
-		BaseCost = 20,
-		CostMultiplier = 2,
+		BaseCost = 20, --cost inital
+		CostMultiplier = 2,  --cu cat se amplifica (ex daca tier 1 =20 x acest pret  = pret nou)
 		BaseRate = 1,
 		EffectMultiplier = 2
 	}
