@@ -1,0 +1,18 @@
+-- DevProductConfig (ModuleScript)
+return {
+	["10Brainrot"] = {
+		DevProductId = 3296897425, -- replace with real
+		Tier = "Yellow",
+		Count = 10
+	},
+	["25Brainrot"] = {
+		DevProductId = 3296898337,
+		Tier = "Yellow",
+		Count = 25
+	},
+	["50Brainrot"] = {
+		DevProductId = 3296899580,
+		Tier = "Yellow",
+		Count = 50
+	}
+}
