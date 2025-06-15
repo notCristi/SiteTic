@@ -1,0 +1,67 @@
+-- ReplicatedStorage.Modules.PlotUtils
+
+local Players = game:GetService("Players")
+
+local module = {}
+
+-- Searches both folders
+local function getAllPlots()
+	local plots = {}
+	local claimed = workspace:FindFirstChild("ClaimedPlots")
+	local available = workspace:FindFirstChild("AvailablePlots")
+
+	if claimed then
+		for _, p in ipairs(claimed:GetChildren()) do
+			table.insert(plots, p)
+		end
+	end
+
+	if available then
+		for _, p in ipairs(available:GetChildren()) do
+			table.insert(plots, p)
+		end
+	end
+
+	return plots
+end
+
+function module:GetPlayerPlot(player)
+	local userIdString = tostring(player.UserId)
+	--print("[PlotUtils] Looking for plot for", player.Name, "ID:", userIdString)
+
+	for _, plot in ipairs(getAllPlots()) do
+		local owner = plot:FindFirstChild("Owner")
+		if owner then
+			--print("[PlotUtils] Plot", plot.Name, "Owner:", owner.Value)
+		end
+
+		if owner and owner:IsA("StringValue") and owner.Value == userIdString then
+			--print("[PlotUtils] Match found:", plot.Name)
+			return plot
+		end
+	end
+
+	--print("[PlotUtils] No plot found for", player.Name)
+	return nil
+end
+
+function module:GetOwningPlayerUserId(part)
+	local current = part
+
+	while current and current ~= workspace do
+		local ownerValue = current:FindFirstChild("Owner")
+		if ownerValue and ownerValue:IsA("StringValue") then
+			return tonumber(ownerValue.Value)
+		end
+		current = current.Parent
+	end
+
+	return nil
+end
+
+function module:IsPlayerOwnerOfPart(player, part)
+	local userId = module:GetOwningPlayerUserId(part)
+	return userId == player.UserId
+end
+
+return module
