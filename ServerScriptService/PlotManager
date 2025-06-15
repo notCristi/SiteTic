@@ -43,7 +43,7 @@ function PlotManager.InitializePlots(availablePlotsFolder, claimedPlotsFolder)
 
 			plotModel.Parent = availablePlotsFolder
 			_plotStates[plotModel] = nil -- Mark as available in the internal state
-			print("PlotManager: Initialized plot " .. plotModel.Name .. " to available.")
+			--print("PlotManager: Initialized plot " .. plotModel.Name .. " to available.")
 		else
 			warn("PlotManager: Non-plot model found during initialization: " .. plotModel.Name)
 		end
@@ -74,11 +74,11 @@ function PlotManager.ClaimPlot(playerUserId, savedPlotName)
 					ownerStringValue.Value = tostring(playerUserId)
 					savedPlot.Parent = claimedPlotsFolder -- Move to claimed
 					_plotStates[savedPlot] = playerUserId -- Mark as claimed in internal state
-					print("PlotManager: " .. playerUserId .. " successfully RE-CLAIMED saved plot: " .. savedPlot.Name)
+					--print("PlotManager: " .. playerUserId .. " successfully RE-CLAIMED saved plot: " .. savedPlot.Name)
 					return savedPlot
 				else
 					-- Race condition: Another player claimed it between GetValue and SetValue.
-					print("PlotManager: Race condition on re-claim of " .. savedPlot.Name .. ". Skipping.")
+					--print("PlotManager: Race condition on re-claim of " .. savedPlot.Name .. ". Skipping.")
 				end
 			end
 		end
@@ -98,13 +98,13 @@ function PlotManager.ClaimPlot(playerUserId, savedPlotName)
 				ownerStringValue.Value = tostring(playerUserId)
 				plotCandidate.Parent = claimedPlotsFolder
 				_plotStates[plotCandidate] = playerUserId
-				print("PlotManager: " .. playerUserId .. " successfully claimed NEW plot: " .. plotCandidate.Name)
+				--print("PlotManager: " .. playerUserId .. " successfully claimed NEW plot: " .. plotCandidate.Name)
 				return plotCandidate
 			end
 		end
 	end
 
-	print("PlotManager: " .. playerUserId .. " failed to claim any plot. No genuinely available plots found.")
+	--print("PlotManager: " .. playerUserId .. " failed to claim any plot. No genuinely available plots found.")
 	return nil -- No plot could be claimed
 end
 
@@ -128,19 +128,19 @@ function PlotManager.ReleasePlot(playerUserId, plotName)
 					ownerStringValue.Value = "None"
 					plotModel.Parent = availablePlotsFolder -- Move back to available
 					_plotStates[plotModel] = nil -- Mark as available in internal state
-					print("PlotManager: " .. playerUserId .. " successfully released plot: " .. plotName)
+				--	print("PlotManager: " .. playerUserId .. " successfully released plot: " .. plotName)
 					return true
 				else
 					-- Race condition: Another player just claimed it between GetValue and SetValue.
-					print("PlotManager: Race condition on release of " .. plotName .. ". It was re-claimed by someone else.")
+					--print("PlotManager: Race condition on release of " .. plotName .. ". It was re-claimed by someone else.")
 					return false
 				end
 			else
-				print("PlotManager: Plot " .. plotName .. " not owned by " .. playerUserId .. ". Current owner: " .. (ownerStringValue.Value or "None") .. ". Skipping release.")
+				--print("PlotManager: Plot " .. plotName .. " not owned by " .. playerUserId .. ". Current owner: " .. (ownerStringValue.Value or "None") .. ". Skipping release.")
 				return false -- Not owned by this player
 			end
 		else
-			print("PlotManager: Plot " .. plotName .. " is already marked as free or malformed. Skipping release.")
+			--print("PlotManager: Plot " .. plotName .. " is already marked as free or malformed. Skipping release.")
 			_plotStates[plotModel] = nil -- Ensure internal state is also clear
 			plotModel.Parent = availablePlotsFolder -- Ensure it's in correct folder
 			return true -- Considered released
