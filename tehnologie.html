@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html lang="ro"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tehnologie Avansată - iPhone 15 Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f9f9fb",
+                      "secondary-container": "#e0dfe4",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed-variant": "#474649",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container-low": "#f3f3f5",
+                      "outline": "#77767b",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#f0f0f2",
+                      "secondary-fixed": "#e3e2e7",
+                      "secondary-fixed-dim": "#c6c6cb",
+                      "surface-container-highest": "#e2e2e4",
+                      "surface-tint": "#5f5e60",
+                      "on-tertiary-fixed": "#001b3e",
+                      "surface-dim": "#d9dadc",
+                      "on-tertiary-fixed-variant": "#00458e",
+                      "on-surface": "#1a1c1d",
+                      "primary": "#030304",
+                      "on-primary-fixed": "#1b1b1d",
+                      "tertiary-fixed-dim": "#aac7ff",
+                      "primary-fixed": "#e4e2e4",
+                      "tertiary-fixed": "#d7e3ff",
+                      "on-secondary-container": "#626267",
+                      "primary-container": "#1d1d1f",
+                      "on-surface-variant": "#46464a",
+                      "secondary": "#5d5e63",
+                      "inverse-primary": "#c8c6c8",
+                      "surface-container": "#eeeef0",
+                      "inverse-surface": "#2f3132",
+                      "surface-container-high": "#e8e8ea",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#c8c6c8",
+                      "outline-variant": "#c7c6ca",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#3b84eb",
+                      "on-secondary-fixed-variant": "#46464b",
+                      "surface-bright": "#f9f9fb",
+                      "tertiary-container": "#001c41",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed": "#1a1b1f",
+                      "on-primary-container": "#868587",
+                      "surface": "#f9f9fb",
+                      "tertiary": "#00030b",
+                      "on-primary": "#ffffff",
+                      "surface-variant": "#e2e2e4",
+                      "on-background": "#1a1c1d",
+                      "titanium": "#878681",
+                      "deep-blue": "#0f2537"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap-mobile": "80px",
+                      "container-max": "1200px",
+                      "margin-desktop": "64px",
+                      "margin-mobile": "24px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "section-gap": "160px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-xl": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "display-xl-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-xl": [
+                              "80px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "17px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .delay-100 { transition-delay: 100ms; }
+        .delay-200 { transition-delay: 200ms; }
+        .delay-300 { transition-delay: 300ms; }
+        
+        .soft-depth {
+            box-shadow: 0 20px 40px -10px rgba(0, 27, 62, 0.05);
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 1);
+        }
+
+        .animate-bar {
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
+        }
+        .visible .animate-bar {
+            transform: scaleX(1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased selection:bg-tertiary-container selection:text-on-tertiary-container overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-outline-variant/30 dark:border-white/10 shadow-sm dark:shadow-none fixed top-0 w-full h-16 z-50">
+<div class="flex justify-between items-center px-margin-desktop max-w-container-max mx-auto h-full">
+<a class="font-headline-md text-headline-md font-semibold text-primary dark:text-primary-fixed hover:opacity-80 transition-opacity duration-300" href="index.html">
+                iPhone 15 Pro
+            </a>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant dark:text-on-secondary-container hover:text-primary dark:hover:text-primary-fixed transition-colors font-body-md text-body-md hover:opacity-80 transition-opacity duration-300 cursor-pointer active:scale-95 transition-transform" href="index.html">Acasă</a>
+<a class="text-on-surface-variant dark:text-on-secondary-container hover:text-primary dark:hover:text-primary-fixed transition-colors font-body-md text-body-md hover:opacity-80 transition-opacity duration-300 cursor-pointer active:scale-95 transition-transform" href="design.html">Design</a>
+<a class="text-primary dark:text-primary-fixed font-semibold border-b-2 border-primary dark:border-primary-fixed pb-1 font-body-md text-body-md hover:opacity-80 transition-opacity duration-300 cursor-pointer active:scale-95 transition-transform" href="tehnologie.html">Tehnologie</a>
+</nav>
+<button class="bg-primary text-on-primary font-label-sm text-label-sm px-6 py-2 rounded-full hover:opacity-80 transition-opacity duration-300 cursor-pointer active:scale-95 transition-transform">
+                Buy
+            </button>
+</div>
+</header>
+<main class="pt-32 pb-section-gap md:pb-section-gap-mobile">
+<!-- Hero Section -->
+<section class="max-w-container-max mx-auto px-margin-desktop md:px-margin-mobile mb-section-gap md:mb-section-gap-mobile text-center fade-in-up">
+<h1 class="font-display-xl text-display-xl md:font-display-xl-mobile md:text-display-xl-mobile text-primary mb-6">Inovație dincolo de limite.</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">Explorează specificațiile tehnice care definesc noul standard de performanță, captură de imagine și conectivitate.</p>
+</section>
+<!-- A17 Pro Section -->
+<section class="max-w-container-max mx-auto px-margin-desktop md:px-margin-mobile mb-section-gap md:mb-section-gap-mobile fade-in-up delay-100">
+<div class="grid grid-cols-12 gap-gutter items-center">
+<div class="col-span-12 md:col-span-5 md:pr-12">
+<span class="inline-block px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm mb-4">A17 Pro Chip</span>
+<h2 class="font-headline-lg text-headline-lg md:font-headline-lg-mobile md:text-headline-lg-mobile text-primary mb-6">Performanță care sfidează așteptările.</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">Primul cip pe 3 nanometri din industrie aduce un salt masiv în grafică și eficiență. GPU-ul de clasă pro oferă ray tracing accelerat hardware pentru gaming imersiv.</p>
+<div class="space-y-8">
+<div>
+<div class="flex justify-between font-label-sm text-label-sm mb-3">
+<span class="text-on-surface-variant font-semibold">Performanță GPU</span>
+<span class="text-deep-blue font-bold">+20%</span>
+</div>
+<div class="h-2.5 w-full bg-titanium/20 rounded-full overflow-hidden">
+<div class="h-full bg-deep-blue w-[80%] rounded-full animate-bar"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-sm text-label-sm mb-3">
+<span class="text-on-surface-variant font-semibold">Eficiență CPU</span>
+<span class="text-deep-blue font-bold">+10%</span>
+</div>
+<div class="h-2.5 w-full bg-titanium/20 rounded-full overflow-hidden">
+<div class="h-full bg-deep-blue w-[90%] rounded-full animate-bar"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-sm text-label-sm mb-3">
+<span class="text-on-surface-variant font-semibold">Neural Engine</span>
+<span class="text-deep-blue font-bold">2x mai rapid</span>
+</div>
+<div class="h-2.5 w-full bg-titanium/20 rounded-full overflow-hidden">
+<div class="h-full bg-titanium w-[100%] rounded-full animate-bar"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-7 mt-12 md:mt-0">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 p-8 soft-depth relative overflow-hidden aspect-[4/3] flex items-center justify-center">
+<img alt="Close-up macro photography of a sophisticated computer microchip processor glowing with subtle blue and purple neon light traces against a dark metallic background. The image evokes high-tech precision, advanced computing power, and futuristic industrial design in a premium, clean aesthetic." class="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-luminosity" data-alt="Close-up macro photography of a sophisticated computer microchip processor glowing with subtle blue and purple neon light traces against a dark metallic background. The image evokes high-tech precision, advanced computing power, and futuristic industrial design in a premium, clean aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMk1i1D1-zhlIw7gHDVtqGmFQm1EmSZ5uUr3iB1o6y77Xg3Zy7GcoLxumR4qqaJCYbmxEksFlCSqVPWDc5xPfKvCFjRG7FtcKKP6YkCAL6V1FTlK_AQgcGd1Mk8cw1cl_RGaurdrde0giMCOLEeKdSdtX64-Xz_UuPLtmAo1k-7vkt28VZFNm1rJbhUJTcQfhO1XK-oRjpckDMIQu87fCG3Ae9eofInTKEKwUEbC3NjIOs0bY8cf2mdO5L0Wc3WPV9BdQ_7yoFQA"/>
+<div class="relative z-10 glass-panel p-6 rounded-lg text-center min-w-[200px]">
+<span class="material-symbols-outlined text-4xl text-deep-blue mb-2" data-icon="memory">memory</span>
+<div class="font-headline-md text-headline-md text-primary">3nm</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Arhitectură</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Camera Section -->
+<section class="max-w-container-max mx-auto px-margin-desktop md:px-margin-mobile mb-section-gap md:mb-section-gap-mobile fade-in-up delay-200">
+<div class="grid grid-cols-12 gap-gutter items-center flex-row-reverse">
+<div class="col-span-12 md:col-span-7 order-2 md:order-1 mt-12 md:mt-0">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 p-8 soft-depth relative overflow-hidden aspect-[4/3] flex items-center justify-center bg-titanium/5">
+<div class="relative z-10 p-6 rounded-lg text-center">
+<span class="material-symbols-outlined text-6xl text-deep-blue mb-4" data-icon="photo_camera">photo_camera</span>
+<div class="font-headline-md text-headline-md text-primary">48MP</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Camera Principală</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-5 md:pl-12 order-1 md:order-2">
+<span class="inline-block px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm mb-4">Pro Camera System</span>
+<h2 class="font-headline-lg text-headline-lg md:font-headline-lg-mobile md:text-headline-lg-mobile text-primary mb-6">Fotografie la superlativ.</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">Noul senzor de 48MP captează detalii incredibile, iar opțiunile avansate de distanță focală oferă flexibilitatea a șapte obiective pro în buzunarul tău.</p>
+</div>
+</div>
+</section>
+<!-- USB-C Section -->
+<section class="max-w-container-max mx-auto px-margin-desktop md:px-margin-mobile fade-in-up delay-300">
+<div class="grid grid-cols-12 gap-gutter items-center">
+<div class="col-span-12 md:col-span-5 md:pr-12">
+<span class="inline-block px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm mb-4">Conectivitate USB-C</span>
+<h2 class="font-headline-lg text-headline-lg md:font-headline-lg-mobile md:text-headline-lg-mobile text-primary mb-6">Viteză de transfer impresionantă.</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">Suportul pentru USB 3 aduce viteze de transfer de până la 20x mai rapide, facilitând fluxuri de lucru profesionale direct de pe iPhone.</p>
+</div>
+<div class="col-span-12 md:col-span-7 mt-12 md:mt-0">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 p-8 soft-depth relative overflow-hidden aspect-[4/3] flex items-center justify-center bg-deep-blue/5">
+<div class="relative z-10 p-6 rounded-lg text-center">
+<span class="material-symbols-outlined text-6xl text-titanium mb-4" data-icon="cable">cable</span>
+<div class="font-headline-md text-headline-md text-primary">10Gb/s</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Viteze USB 3</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-background dark:bg-surface-dim border-t border-outline-variant dark:border-outline w-full py-12 mt-24">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<a class="font-headline-md text-headline-md text-primary hover:underline transition-all transition-colors duration-200" href="index.html">
+                iPhone 15 Pro
+            </a>
+<div class="flex gap-6 font-label-sm text-label-sm">
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all transition-colors duration-200" href="#">Politica de confidențialitate</a>
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all transition-colors duration-200" href="#">Termeni de utilizare</a>
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all transition-colors duration-200" href="#">Harta site-ului</a>
+</div>
+<div class="text-on-surface-variant dark:text-on-secondary-fixed-variant font-label-sm text-label-sm">
+                © 2024 Apple Inc. Toate drepturile rezervate.
+            </div>
+</div>
+</footer>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.fade-in-up').forEach(el => {
+                observer.observe(el);
+            });
+        });
+    </script>
+</body></html>

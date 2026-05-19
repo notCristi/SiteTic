@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html lang="ro"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Design Fluid - iPhone 15 Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f9f9fb",
+                        "secondary-container": "#e0dfe4",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#474649",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f3f3f5",
+                        "outline": "#77767b",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#f0f0f2",
+                        "secondary-fixed": "#e3e2e7",
+                        "secondary-fixed-dim": "#c6c6cb",
+                        "surface-container-highest": "#e2e2e4",
+                        "surface-tint": "#5f5e60",
+                        "on-tertiary-fixed": "#001b3e",
+                        "surface-dim": "#d9dadc",
+                        "on-tertiary-fixed-variant": "#00458e",
+                        "on-surface": "#1a1c1d",
+                        "primary": "#030304",
+                        "on-primary-fixed": "#1b1b1d",
+                        "tertiary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#e4e2e4",
+                        "tertiary-fixed": "#d7e3ff",
+                        "on-secondary-container": "#626267",
+                        "primary-container": "#1d1d1f",
+                        "on-surface-variant": "#46464a",
+                        "secondary": "#5d5e63",
+                        "inverse-primary": "#c8c6c8",
+                        "surface-container": "#eeeef0",
+                        "inverse-surface": "#2f3132",
+                        "surface-container-high": "#e8e8ea",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#c8c6c8",
+                        "outline-variant": "#c7c6ca",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#3b84eb",
+                        "on-secondary-fixed-variant": "#46464b",
+                        "surface-bright": "#f9f9fb",
+                        "tertiary-container": "#001c41",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed": "#1a1b1f",
+                        "on-primary-container": "#868587",
+                        "surface": "#f9f9fb",
+                        "tertiary": "#00030b",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e2e2e4",
+                        "on-background": "#1a1c1d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap-mobile": "80px",
+                        "container-max": "1200px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "24px",
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "section-gap": "160px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-xl-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["20px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["80px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-sm": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-xl-mobile": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["17px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .panel-slide-up {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .panel-slide-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 255, 255, 0.5);
+        }
+        .ambient-shadow {
+            box-shadow: 0 20px 60px -10px rgba(0, 27, 62, 0.05); /* Tinted with deep blue (on-tertiary-fixed approximation) */
+        }
+        .scroll-indicator {
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full h-16 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-outline-variant/30 dark:border-white/10 shadow-sm dark:shadow-none z-50">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto h-full">
+<a class="font-headline-md text-headline-md font-semibold text-primary dark:text-primary-fixed cursor-pointer hover:opacity-80 transition-opacity duration-300" href="index.html">iPhone 15 Pro</a>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-on-surface-variant dark:text-on-secondary-container hover:text-primary dark:hover:text-primary-fixed transition-colors font-body-md text-body-md cursor-pointer active:scale-95 transition-transform hover:opacity-80 transition-opacity duration-300" href="index.html">Acasă</a>
+<a class="text-primary dark:text-primary-fixed font-semibold border-b-2 border-primary dark:border-primary-fixed pb-1 font-body-md text-body-md cursor-pointer active:scale-95 transition-transform hover:opacity-80 transition-opacity duration-300" href="design.html">Design</a>
+<a class="text-on-surface-variant dark:text-on-secondary-container hover:text-primary dark:hover:text-primary-fixed transition-colors font-body-md text-body-md cursor-pointer active:scale-95 transition-transform hover:opacity-80 transition-opacity duration-300" href="tehnologie.html">Tehnologie</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-white rounded-full px-6 py-2 font-label-sm text-label-sm hover:opacity-80 transition-opacity duration-300 cursor-pointer active:scale-95 transition-transform">Buy</button>
+</div>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="min-h-screen flex flex-col justify-center items-center px-margin-mobile md:px-margin-desktop pt-24 relative overflow-hidden">
+<div class="max-w-container-max mx-auto text-center z-10">
+<h1 class="font-display-xl-mobile text-display-xl-mobile md:font-display-xl md:text-display-xl text-primary mb-6 panel-slide-up">
+                Design Fluid.
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto panel-slide-up" style="transition-delay: 0.1s;">
+                Fiecare curbură, fiecare muchie, sculptate pentru o tranziție perfectă între sticlă și metal. O experiență tactilă neîntreruptă.
+            </p>
+</div>
+<div class="absolute bottom-12 flex flex-col items-center justify-center opacity-50 scroll-indicator">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-2">Descopera</span>
+<span class="material-symbols-outlined text-on-surface-variant">arrow_downward</span>
+</div>
+</section>
+<!-- Material Section: Titan -->
+<section class="py-section-gap-mobile md:py-section-gap px-margin-mobile md:px-margin-desktop relative">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+<div class="md:col-span-5 md:col-start-1 panel-slide-up z-10 relative">
+<div class="glass-panel ambient-shadow p-8 md:p-12 rounded-xl -mr-0 md:-mr-12 relative z-20">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary mb-4">
+                            Titan de Gradul 5.
+                        </h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                            Cel mai rezistent material folosit vreodată într-un iPhone. Ușor, durabil și finisat printr-un proces de precizie nanometrică pentru o textură uimitoare.
+                        </p>
+<div class="flex items-center gap-2 text-primary font-label-sm text-label-sm uppercase tracking-wider">
+<span class="material-symbols-outlined text-sm">precision_manufacturing</span>
+                            Prelucrare CNC
+                        </div>
+</div>
+</div>
+<div class="md:col-span-8 md:col-start-5 panel-slide-up h-[500px] md:h-[700px] rounded-xl overflow-hidden relative">
+<img alt="Titan de Gradul 5" class="w-full h-full object-cover rounded-xl shadow-sm border border-outline-variant/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0tuhFBicXB0rI_lbwVfpzIa1kSD-FkoWtOz0qhPurHigEsVy9sSUARVFvJv9xE97of4jxQ9RJz6uioMRW8-ZpPEt8yhV1HUdE3AV4AOXwp07-uTVxnAb52N1n4mrLxYq9XkT7uvyc9TGV-O-tISiNEokUbgkSlDRP7j-1kAvg2YpBPn-I_KOSIl4Z4KCiZyAEcpyj_EJ93G1Qy0jvQ_ZsjwCtZrkh-fH64uzlh0RiFlQAk_smdRj_ugwI1mO-Q8yV3hlnGBMmIQ"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Feature Section: Margini Ultra-Subtiri -->
+<section class="py-section-gap-mobile md:py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-low relative">
+<div class="max-w-container-max mx-auto">
+<div class="flex flex-col-reverse md:grid md:grid-cols-12 gap-gutter items-center">
+<div class="w-full h-[400px] md:h-[600px] md:col-span-7 panel-slide-up rounded-xl overflow-hidden bg-white ambient-shadow border border-outline-variant/10 relative flex items-center justify-center p-8">
+<!-- Abstract representation of ultra-thin bezels -->
+<div class="w-full h-full border-4 border-surface-container-highest rounded-3xl relative overflow-hidden flex items-center justify-center">
+<div class="w-[95%] h-[96%] border border-outline-variant/30 rounded-2xl absolute bg-background/50"></div>
+<div class="text-center z-10">
+<span class="material-symbols-outlined text-6xl text-outline mb-4">aspect_ratio</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Cross-section view</p>
+</div>
+</div>
+</div>
+<div class="md:col-span-4 md:col-start-9 panel-slide-up">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary mb-4">
+                        Margini Ultra-Subțiri.
+                    </h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Spațiu maximizat pentru display. Designul fluid continuă dincolo de marginile ecranului, topindu-se imperceptibil în carcasa de titan. O minune inginerească a miniaturizării.
+                    </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Feature Section: Butonul Actiune -->
+<section class="py-section-gap-mobile md:py-section-gap px-margin-mobile md:px-margin-desktop relative">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+<div class="md:col-span-4 md:col-start-2 panel-slide-up">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary mb-4">
+                        Butonul Acțiune.
+                    </h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                        Personalizabil, precis, instant. O simplă apăsare declanșează funcția ta favorită, însoțită de un feedback haptic detaliat și o animație fluidă în Dynamic Island.
+                    </p>
+<button class="border border-outline-variant text-primary rounded-full px-6 py-2 font-label-sm text-label-sm hover:bg-surface-container-low transition-colors duration-300 cursor-pointer active:scale-95 transition-transform">
+                        Explorează setările
+                    </button>
+</div>
+<div class="md:col-span-6 md:col-start-7 panel-slide-up h-[400px] md:h-[600px] rounded-xl overflow-hidden relative ambient-shadow border border-outline-variant/20 mt-8 md:mt-0">
+<img alt="Butonul Acțiune" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOil5ILycyW9RzsOaYXHvUtXKvex-v34dCCilNw8F5M9fJTTi47UPApSTgJnzHVnvuvrQVHm9fV6sTCgerhs0oMaP8jvSnm1_Gm77sk1nJPffJFC-09j4wWBVsEnN7dSTlYHxRQ7pPkpr9vP-nogGfzRCaOGy2MRnujYNEb_PGigMCR3N47GRxjPMdhYq-RMGHo4rGtuZuwwbRjE6QU7Uma6qnWiJrPlLXsGHzl1C34-D9pFuwZGC26jspUHdlhYq67D_Yr_DPcQ"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="w-full py-12 bg-background dark:bg-surface-dim border-t border-outline-variant dark:border-outline">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<a class="font-headline-md text-headline-md text-primary mb-4 md:mb-0" href="index.html">iPhone 15 Pro</a>
+<div class="flex flex-wrap justify-center gap-6 font-label-sm text-label-sm">
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all duration-200" href="#">Politica de confidențialitate</a>
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all duration-200" href="#">Termeni de utilizare</a>
+<a class="text-on-surface-variant dark:text-on-secondary-fixed-variant hover:underline transition-all duration-200" href="#">Harta site-ului</a>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant dark:text-on-secondary-fixed-variant mt-4 md:mt-0">
+                © 2024 Apple Inc. Toate drepturile rezervate.
+            </div>
+</div>
+</footer>
+<script>
+        // Simple Intersection Observer for scroll animations
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.15
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.panel-slide-up').forEach(panel => {
+                observer.observe(panel);
+            });
+        });
+    </script>
+</body></html>
